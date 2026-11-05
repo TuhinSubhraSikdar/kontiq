@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Projects · Kontiq{% endblock %}
+{% block content %}
+<div class="page-heading-actions">
+    {% include "components/page_header.html" with eyebrow="Business context" heading="Projects" description="Keep each brand’s knowledge, links, references, and generation work isolated." %}
+    <a class="button button-primary" href="{% url 'projects:create' %}">New project</a>
+</div>
+{% if projects %}
+<div class="card-grid">
+    {% for project in projects %}
+    <article class="resource-card">
+        <div class="resource-card-head">
+            <div><p class="section-kicker">{{ project.website_url|default:"Local project" }}</p><h2><a href="{% url 'projects:detail' project.pk %}">{{ project.name }}</a></h2></div>
+            {% include "components/status_badge.html" with label=project.is_active|yesno:"Active,Paused" tone=project.is_active|yesno:"success,neutral" %}
+        </div>
+        <p>{{ project.description|default:"No project description yet."|truncatechars:150 }}</p>
+        <dl class="mini-stats"><div><dt>Links</dt><dd>{{ project.links.count }}</dd></div><div><dt>References</dt><dd>{{ project.references.count }}</dd></div><div><dt>Tasks</dt><dd>{{ project.content_tasks.count }}</dd></div></dl>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<section class="panel">{% include "components/empty_state.html" with icon="projects" title="Create your first project" description="Projects hold the business context used by prompts and content generation." %}<div class="empty-action"><a class="button button-primary" href="{% url 'projects:create' %}">Create project</a></div></section>
+{% endif %}
+{% endblock %}

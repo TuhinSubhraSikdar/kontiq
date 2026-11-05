@@ -1,0 +1,13 @@
+<article class="health-card">
+    <div class="health-card-icon health-card-icon-{{ check.tone }}">
+        {% include "components/icon.html" with name=check.icon %}
+    </div>
+    <div class="health-card-copy">
+        <p>{{ check.label }}</p>
+        <div class="health-card-value-row">
+            <strong>{{ check.value }}</strong>
+            {% include "components/status_badge.html" with label=check.value tone=check.tone %}
+        </div>
+        <span>{{ check.detail }}</span>
+    </div>
+</article>

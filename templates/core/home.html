@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Foundation ready · Kontiq{% endblock %}
+
+{% block content %}
+<section class="foundation-panel" aria-labelledby="foundation-title">
+    <p class="eyebrow">Phase 0</p>
+    <h1 id="foundation-title">Kontiq’s foundation is ready.</h1>
+    <p class="lead">
+        Authentication, environment-based configuration, local storage paths,
+        and background-worker wiring are in place. Product modules will be added
+        incrementally in the next phases.
+    </p>
+    <div class="foundation-grid" aria-label="Foundation status">
+        <article>
+            <span class="status-dot" aria-hidden="true"></span>
+            <h2>Authenticated</h2>
+            <p>You are signed in as <strong>{{ user.get_username }}</strong>.</p>
+        </article>
+        <article>
+            <span class="status-dot" aria-hidden="true"></span>
+            <h2>Local first</h2>
+            <p>Application data and documents remain under your configured local storage.</p>
+        </article>
+        <article>
+            <span class="status-dot" aria-hidden="true"></span>
+            <h2>Modular by design</h2>
+            <p>Projects, prompts, tasks, AI, scheduling, and content are isolated domains.</p>
+        </article>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,39 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Django runtime
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/*
+!media/project_references/
+!media/project_references/.gitkeep
+!media/generated_docs/
+!media/generated_docs/.gitkeep
+celerybeat-schedule
+celerybeat-schedule.*
+
+# Editors and operating systems
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

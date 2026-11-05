@@ -1,0 +1,1 @@
+"""Kontiq domain applications."""

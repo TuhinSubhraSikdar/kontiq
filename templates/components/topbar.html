@@ -1,0 +1,15 @@
+<header class="topbar">
+    <div class="topbar-title-group">
+        <button class="icon-button sidebar-toggle d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebar" aria-controls="appSidebar" aria-label="Open navigation">
+            {% include "components/icon.html" with name="menu" %}
+        </button>
+        <div>
+            <p class="topbar-kicker">Kontiq workspace</p>
+            <p class="topbar-title">{{ page_title|default:"Workspace" }}</p>
+        </div>
+    </div>
+    <div class="workspace-state" title="Kontiq stores application files on this machine">
+        <span class="state-dot" aria-hidden="true"></span>
+        <span>Local mode</span>
+    </div>
+</header>

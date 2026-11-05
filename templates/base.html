@@ -1,0 +1,45 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Kontiq local-first AI content automation platform">
+    <title>{% block title %}Kontiq{% endblock %}</title>
+    <link rel="icon" href="{% static 'images/favicon.svg' %}" type="image/svg+xml">
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="{% if user.is_authenticated %}app-body{% else %}auth-body{% endif %}">
+    <a class="skip-link" href="#main-content">Skip to content</a>
+
+    {% if user.is_authenticated %}
+        <div class="app-shell">
+            {% include "components/sidebar.html" %}
+            <div class="app-frame">
+                {% include "components/topbar.html" %}
+                <main id="main-content" class="workspace" tabindex="-1">
+                    {% include "components/messages.html" %}
+                    {% block content %}{% endblock %}
+                </main>
+            </div>
+        </div>
+    {% else %}
+        <header class="auth-header">
+            <a class="brand" href="{% url 'login' %}" aria-label="Kontiq sign in">
+                <span class="brand-mark" aria-hidden="true">K</span>
+                <span>Kontiq</span>
+            </a>
+        </header>
+        <main id="main-content" class="auth-main" tabindex="-1">
+            {% include "components/messages.html" %}
+            {% block auth_content %}{% block content_anonymous %}{% endblock %}{% endblock %}
+        </main>
+    {% endif %}
+
+    <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}" defer></script>
+    <script src="{% static 'js/app.js' %}" defer></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

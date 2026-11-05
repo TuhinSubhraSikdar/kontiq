@@ -1,0 +1,14 @@
+# Core framework: Django 5.2 is the current LTS line and supports Python 3.10.
+Django>=5.2.19,<5.3
+django-environ>=0.14,<0.15
+
+# Background queue and Redis transport.
+celery[redis]>=5.6.3,<5.7
+
+# AI and document tooling used by later roadmap phases.
+openai>=3.42,<4
+python-docx>=1.2,<2
+pypdf>=6.21,<7
+
+# PostgreSQL compatibility for non-SQLite deployments.
+psycopg[binary]>=3.3,<4

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Kontiq{% endblock %}
+{% block content %}
+<div class="page-heading-actions">
+    {% include "components/page_header.html" with eyebrow="Workspace overview" heading=page_heading description=page_description %}
+    <div class="button-row"><a class="button button-secondary" href="{% url 'projects:create' %}">New project</a><a class="button button-primary" href="{% url 'tasks:create' %}">New task</a></div>
+</div>
+<section class="metric-grid" aria-label="Workspace totals">{% for metric in dashboard.metrics %}<article class="metric-card"><p>{{ metric.label }}</p><strong>{{ metric.value }}</strong><span>{{ metric.detail }}</span></article>{% endfor %}</section>
+<section class="dashboard-section" aria-labelledby="readiness-heading"><div class="section-heading-row"><div><p class="section-kicker">Live readiness</p><h2 id="readiness-heading">System health</h2></div><p class="section-note">Checked on every request</p></div><div class="health-grid">{% for check in dashboard.health_checks %}{% include "components/health_card.html" with check=check %}{% endfor %}</div></section>
+<div class="dashboard-grid"><section class="panel"><div class="panel-header"><div><p class="section-kicker">Product coverage</p><h2>Available modules</h2></div>{% include "components/status_badge.html" with label="MVP complete" tone="success" %}</div><div class="module-list">{% for module in dashboard.modules %}<article class="module-row"><div class="module-copy"><div class="module-title-row"><h3>{{ module.label }}</h3><span>{{ module.phase }}</span></div><p>{{ module.description }}</p></div>{% include "components/status_badge.html" with label=module.status_label tone=module.status_tone %}</article>{% endfor %}</div></section>
+<aside class="dashboard-side-column"><section class="panel"><div class="panel-header compact"><div><p class="section-kicker">History</p><h2>Recent activity</h2></div><a class="text-button" href="{% url 'activity_logs:list' %}">View all</a></div>{% if dashboard.recent_activity %}<div class="item-list">{% for log in dashboard.recent_activity %}<div class="item-row"><div><strong>{{ log.summary }}</strong><span>{{ log.created_at|timesince }} ago{% if log.project %} · {{ log.project.name }}{% endif %}</span></div></div>{% endfor %}</div>{% else %}{% include "components/empty_state.html" with icon="activity" title="No activity yet" description="Create a project to start your audit trail." %}{% endif %}</section></aside></div>
+{% endblock %}
