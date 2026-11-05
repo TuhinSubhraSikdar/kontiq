@@ -15,7 +15,7 @@ from apps.content_tasks.models import ContentTask
 from apps.prompts.models import DEFAULT_PROMPT, PromptTemplate
 from apps.prompts.services import render_prompt
 
-from .providers import OpenAIProvider
+from .provider_configuration import build_active_provider, safe_provider_status
 from .types import GenerationRequest
 
 
@@ -37,12 +37,7 @@ class ParsedContent:
 
 
 def provider_status():
-    provider = OpenAIProvider()
-    return {
-        "name": "OpenAI",
-        "configured": provider.is_configured,
-        "model": settings.OPENAI_MODEL,
-    }
+    return safe_provider_status()
 
 
 def _prompt_values(task):
@@ -288,17 +283,17 @@ def execute_generation(task_id, token):
         task.attempt_count += 1
         task.save(update_fields=["status", "attempt_count", "updated_at"])
 
-    provider = OpenAIProvider()
-    prompt = assemble_prompt(task)
-    repair_note = ""
     try:
+        provider, provider_configuration = build_active_provider()
+        prompt = assemble_prompt(task)
+        repair_note = ""
         errors = []
         for attempt in range(settings.AI_MAX_RETRIES + 1):
             result = provider.generate(
                 GenerationRequest(
                     system=SYSTEM_INSTRUCTIONS,
                     prompt=prompt + repair_note,
-                    model=settings.OPENAI_MODEL,
+                    model=provider_configuration.model,
                     max_output_tokens=settings.AI_MAX_OUTPUT_TOKENS,
                 )
             )
@@ -318,8 +313,10 @@ def execute_generation(task_id, token):
 
 
 def reserve_for_queue(task_id, owner):
-    if not OpenAIProvider().is_configured:
-        raise ValueError("Configure OPENAI_API_KEY and OPENAI_MODEL before generating content.")
+    if not provider_status()["configured"]:
+        raise ValueError(
+            "Configure and activate an AI provider with an API key and model before generating content."
+        )
     with transaction.atomic():
         task = ContentTask.objects.select_for_update().select_related("project").get(
             pk=task_id, project__owner=owner

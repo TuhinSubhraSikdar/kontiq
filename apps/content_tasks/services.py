@@ -47,7 +47,9 @@ def queue_selected_tasks(*, owner, task_ids):
     from apps.ai_engine.services import provider_status, queue_generation
 
     if not provider_status()["configured"]:
-        raise ValueError("Configure OPENAI_API_KEY and OPENAI_MODEL before generating content.")
+        raise ValueError(
+            "Configure and activate an AI provider with an API key and model before generating content."
+        )
 
     unique_ids = []
     for task_id in task_ids:

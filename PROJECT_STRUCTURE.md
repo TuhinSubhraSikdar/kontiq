@@ -58,6 +58,10 @@ User
  ├── ContentType (owner + slug unique)
  │    └── PromptTemplate defaults/overrides
  └── ActivityLog
+
+Global AI configuration
+ ├── AIProviderConfiguration (encrypted credential + provider/model/endpoint)
+ └── AIProviderSelection (singleton active configuration pointer)
 ```
 
 `Project.owner` and `ContentType.owner` are required. Descendant access always scopes through those roots. IDs alone are never authorization.
@@ -106,15 +110,16 @@ generation service
   1. collect authorized project context (bounded reference characters)
   2. select project override, default prompt, or safe fallback
   3. perform restricted variable substitution
-  4. invoke provider-neutral OpenAI adapter request
-  5. parse required JSON fields
-  6. validate title/body/slug/meta length/word count/keyword
-  7. request bounded structural correction when needed
-  8. atomically persist content/version and complete task
-  9. append safe activity metadata
+  4. load the active encrypted provider configuration (or OpenAI environment fallback)
+  5. invoke the provider adapter request
+  6. parse required JSON fields
+  7. validate title/body/slug/meta length/word count/keyword
+  8. request bounded structural correction when needed
+  9. atomically persist content/version and complete task
+ 10. append safe activity metadata
 ```
 
-The provider contract is represented by `GenerationRequest` and `GenerationResult`. `OpenAIProvider` translates it to the OpenAI Responses API and retains only the response identifier and safe usage metadata. Assembled prompts and raw responses are not logged or persisted.
+The provider contract is represented by `GenerationRequest` and `GenerationResult`. `OpenAIProvider` translates it to the OpenAI Responses API. `OpenAICompatibleProvider` uses the compatible chat-completions surface exposed by Anthropic, Gemini, Groq, OpenRouter, and administrator-supplied compatible HTTPS endpoints. Both retain only the provider name, model, response identifier, and safe usage metadata. Assembled prompts and raw responses are not logged or persisted.
 
 Validation establishes format compliance, not factual truth.
 
@@ -144,7 +149,7 @@ The content queue is the approval workspace. A UTF-8 CSV import accepts `Keyword
 
 ## Configuration and deployment
 
-`config/settings.py` reads `.env` once, configures secure production cookie defaults, and registers a minute-based Beat schedule. `.env` and runtime files are ignored. `OPENAI_API_KEY` and `OPENAI_MODEL` are required for generation but never stored in the database.
+`config/settings.py` reads `.env` once, configures secure production cookie defaults, and registers a minute-based Beat schedule. `.env` and runtime files are ignored. `AI_CREDENTIAL_ENCRYPTION_KEY` is a Fernet master key held outside the database. Django admin is restricted to superusers for provider configuration; submitted API keys are encrypted before persistence and only masked hints are shown afterward. `AIProviderSelection` is a singleton relational pointer, so exactly zero or one database profile is active. Workers resolve it for every generation execution, allowing provider/model/key changes without restarts. If no database profile is active, `OPENAI_API_KEY` and `OPENAI_MODEL` remain the backward-compatible fallback.
 
 Production deployments should use PostgreSQL, Redis, separate web/worker/Beat processes, HTTPS, exact host/origin settings, a production static server, and authenticated media routes. The current raw-TCP PostgreSQL/Redis architecture is intentionally local/server oriented and is not a Cloudflare Worker deployment.
 
@@ -158,8 +163,8 @@ python manage.py test
 python manage.py makemigrations --check --dry-run
 ```
 
-Coverage includes authentication, navigation, live readiness, owner isolation, upload validation/extraction, prompt restrictions, task/CSV/bulk creation, inline queue editing, selected-row authorization, configured/unconfigured provider paths, generation idempotency, due scheduling, stale recovery, version snapshots, private/escaped exports, and smoke rendering of every primary page. Provider calls are mocked.
+Coverage includes authentication, navigation, live readiness, owner isolation, upload validation/extraction, prompt restrictions, task/CSV/bulk creation, inline queue editing, selected-row authorization, encrypted provider switching and non-disclosure, configured/unconfigured provider paths, generation idempotency, due scheduling, stale recovery, version snapshots, private/escaped exports, and smoke rendering of every primary page. Provider calls are mocked.
 
 ## Known production-scale boundaries
 
-The MVP does not claim organization/role-based multi-tenancy, database-stored encrypted provider secrets, malware scanning, semantic retrieval, cost quotas, factual verification, rich HTML editing, or adapters for providers other than OpenAI. These are future hardening or expansion areas, not nonfunctional buttons in the current interface.
+The MVP does not claim organization/role-based multi-tenancy, external secret-manager integration or automated key rotation, malware scanning, semantic retrieval, cost quotas, factual verification, rich HTML editing, or complete provider-specific feature parity. These are future hardening or expansion areas, not nonfunctional buttons in the current interface.

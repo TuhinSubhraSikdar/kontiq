@@ -7,18 +7,26 @@ from apps.ai_engine.types import GenerationRequest, GenerationResult
 class OpenAIProvider:
     name = "openai"
 
+    def __init__(self, *, api_key=None, model=None, base_url=None):
+        self.api_key = settings.OPENAI_API_KEY if api_key is None else api_key
+        self.model = settings.OPENAI_MODEL if model is None else model
+        self.base_url = base_url
+
     @property
     def is_configured(self):
-        return bool(settings.OPENAI_API_KEY and settings.OPENAI_MODEL)
+        return bool(self.api_key and self.model)
 
     def generate(self, request: GenerationRequest) -> GenerationResult:
         if not self.is_configured:
-            raise RuntimeError("OpenAI is not configured. Add OPENAI_API_KEY and OPENAI_MODEL to .env.")
-        client = OpenAI(
-            api_key=settings.OPENAI_API_KEY,
+            raise RuntimeError("OpenAI is not configured with an API key and model.")
+        client_options = dict(
+            api_key=self.api_key,
             timeout=float(settings.AI_TIMEOUT_SECONDS),
             max_retries=0,
         )
+        if self.base_url:
+            client_options["base_url"] = self.base_url
+        client = OpenAI(**client_options)
         response = client.responses.create(
             model=request.model,
             instructions=request.system,
