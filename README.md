@@ -7,8 +7,8 @@ Kontiq is a local-first Django workspace for organizing business context, planni
 The roadmap MVP is implemented. Authenticated users can:
 
 - create isolated projects with business context, links, and private TXT/PDF/DOCX references;
-- define content types, restricted prompt templates, and project-specific prompt overrides;
-- create individual or bulk content tasks, schedule them, filter them, and queue generation;
+- start with Web 2.0, Blog Posting, PR Submission, Contextual, LLM Blog (Short Blog), and Others content types, then customize them or add more with restricted prompt templates and project-specific overrides;
+- create individual content rows, paste bulk topics, or import UTF-8 CSV files; edit queue fields inline and explicitly send selected rows to generation;
 - generate through a provider-neutral service and OpenAI adapter outside HTTP requests;
 - prevent duplicate execution with durable database tokens and explicit state transitions;
 - dispatch due work through Celery Beat and recover stale locks;
@@ -96,12 +96,12 @@ Beat invokes the due-work dispatcher once per minute. The relational database re
 ## Product workflow
 
 1. Create a project and add audience, voice, instructions, avoidance rules, links, and optional references.
-2. Create a content type. Kontiq also creates its default restricted prompt.
+2. Use or customize the six starter content types created for every account, or create another type. Kontiq keeps a default restricted prompt for each starter or custom type.
 3. Edit the default prompt or add a project override using only the variables shown in Prompt Manager.
-4. Create a content task or use bulk creation. Optionally schedule it for a future time.
-5. Use **Generate** or let Beat dispatch a due task. The request reserves a durable lock and returns after queueing.
+4. Add a content row, paste a bulk list, or import a CSV with `Keyword`, `Landing Page`, and `Type` columns. The title is optional; when omitted, generation creates a distinct title from the keyword and project context. CSV rows remain pending review and do not generate automatically.
+5. Edit the keyword, landing page, or content type in the queue, select ready rows, and use **Proceed with selected**. Individual **Generate** actions and scheduled Beat dispatch use the same durable queue workflow.
 6. The worker assembles scoped context, invokes OpenAI, parses JSON, validates structure/length/keyword presence, and performs bounded correction attempts.
-7. Completed content appears in Content Library. Edits preserve the previous state as an immutable version.
+7. Completed rows expose their document link in the content queue and appear in Content Library. Edits preserve the previous state as an immutable version.
 8. Export through the authorized HTML or DOCX download views.
 
 Reference text and model output are treated as untrusted. Prompt rendering performs restricted scalar substitution, HTML export escapes content, uploads validate extension/size/signature, and private files never rely on an obscure media URL as authorization.
@@ -114,7 +114,7 @@ python manage.py test
 python manage.py makemigrations --check --dry-run
 ```
 
-The suite covers authentication, tenant isolation, upload validation, prompt-variable validation, task creation/bulk input, provider configuration failure, generation persistence and idempotency, due dispatch, stale-lock recovery, version preservation, escaped/private downloads, navigation, and primary-page rendering. Provider calls are mocked and tests never consume paid APIs.
+The suite covers authentication, tenant isolation, upload validation, prompt-variable validation, task creation, CSV/bulk input, inline queue updates, selected-row authorization, provider configuration failure, generation persistence and idempotency, due dispatch, stale-lock recovery, version preservation, escaped/private downloads, navigation, and primary-page rendering. Provider calls are mocked and tests never consume paid APIs.
 
 ## Storage
 

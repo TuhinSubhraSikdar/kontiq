@@ -24,7 +24,7 @@ Kontiq/
 │   ├── projects/           Projects, links, references, extraction, private downloads
 │   ├── content_types/      User-owned content format definitions
 │   ├── prompts/            Restricted templates, overrides, rendering, preview
-│   ├── content_tasks/      Briefs, bulk creation, filters, schedules, durable state
+│   ├── content_tasks/      Spreadsheet queue, CSV/bulk creation, briefs, filters, schedules, durable state
 │   ├── ai_engine/          Assembly, provider adapter, parsing, validation, orchestration
 │   ├── scheduler/          Per-project policy, due dispatch, stale-lock recovery
 │   ├── content_library/    Generated content, versions, editing, HTML/DOCX exports
@@ -71,6 +71,8 @@ Reference forms enforce size and `.txt`/`.pdf`/`.docx` extensions, verify PDF/DO
 ### Content types and prompts
 
 Content types are user-owned so one account cannot discover another account’s formats. Creating one also creates a default prompt. A prompt may be a per-content-type default or a project override, enforced by conditional unique constraints.
+
+Every new account receives six idempotent starter types with default prompts: Web 2.0, Blog Posting, PR Submission, Contextual, LLM Blog (Short Blog), and Others. A data migration adds any missing starters for existing accounts without overwriting matching user-owned records or later customizations.
 
 Prompt rendering recognizes a documented `{{ variable }}` syntax with a fixed allowlist. It does not evaluate Django, Jinja, Python, or arbitrary expressions. Unknown variables fail form validation.
 
@@ -138,6 +140,8 @@ All domain routes use Django authentication. Object fetches include owner filter
 
 Templates extend the shared dark-navigation/light-workspace shell and use semantic tables, labels, focus styles, status badges, responsive layouts, and keyboard-usable controls. Bootstrap assets are local so the UI has no CDN dependency.
 
+The content queue is the approval workspace. A UTF-8 CSV import accepts `Keyword` plus optional `Landing Page`, `Type`, `Title`, and `Word Count` columns, validates every row against the authenticated owner's active projects/content types, and creates draft tasks without invoking AI. Task titles are optional; a blank title is preserved as an explicit instruction for generation to create a distinct project-scoped title, while the keyword remains the temporary UI label. Users may edit the keyword, landing page, and type inline, then explicitly select up to 100 rows to proceed through the same durable queue reservation used by individual and scheduled generation. Completed rows link to their ownership-checked generated content page.
+
 ## Configuration and deployment
 
 `config/settings.py` reads `.env` once, configures secure production cookie defaults, and registers a minute-based Beat schedule. `.env` and runtime files are ignored. `OPENAI_API_KEY` and `OPENAI_MODEL` are required for generation but never stored in the database.
@@ -154,7 +158,7 @@ python manage.py test
 python manage.py makemigrations --check --dry-run
 ```
 
-Coverage includes authentication, navigation, live readiness, owner isolation, upload validation/extraction, prompt restrictions, task and bulk creation, configured/unconfigured provider paths, generation idempotency, due scheduling, stale recovery, version snapshots, private/escaped exports, and smoke rendering of every primary page. Provider calls are mocked.
+Coverage includes authentication, navigation, live readiness, owner isolation, upload validation/extraction, prompt restrictions, task/CSV/bulk creation, inline queue editing, selected-row authorization, configured/unconfigured provider paths, generation idempotency, due scheduling, stale recovery, version snapshots, private/escaped exports, and smoke rendering of every primary page. Provider calls are mocked.
 
 ## Known production-scale boundaries
 

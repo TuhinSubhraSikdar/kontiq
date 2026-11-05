@@ -17,7 +17,7 @@ class ContentTask(models.Model):
     content_type = models.ForeignKey(
         "content_types.ContentType", on_delete=models.PROTECT, related_name="content_tasks"
     )
-    title = models.CharField(max_length=240)
+    title = models.CharField(max_length=240, blank=True)
     primary_keyword = models.CharField(max_length=180)
     secondary_keywords = models.TextField(blank=True)
     target_url = models.URLField(blank=True)
@@ -52,5 +52,9 @@ class ContentTask(models.Model):
             self.Status.SCHEDULED: "warning",
         }.get(self.status, "neutral")
 
+    @property
+    def display_title(self):
+        return self.title or self.primary_keyword
+
     def __str__(self):
-        return self.title
+        return self.display_title

@@ -10,7 +10,7 @@ from apps.content_tasks.models import ContentTask
 from apps.content_types.models import ContentType
 from apps.projects.models import Project
 
-from .services import execute_generation, queue_generation
+from .services import assemble_prompt, execute_generation, queue_generation
 from .types import GenerationResult
 
 
@@ -58,6 +58,55 @@ class GenerationServiceTests(TestCase):
             queue_generation(self.task.pk, self.user)
         self.task.refresh_from_db()
         self.assertEqual(self.task.status, ContentTask.Status.DRAFT)
+
+    def test_blank_requested_title_adds_ai_title_direction(self):
+        self.task.title = ""
+        self.task.save(update_fields=["title"])
+        prompt = assemble_prompt(self.task)
+        self.assertIn("No title was supplied", prompt)
+        self.assertIn("Generate a unique, relevant title", prompt)
+        self.assertIn(self.task.primary_keyword, prompt)
+
+    @override_settings(OPENAI_API_KEY="test-key", OPENAI_MODEL="test-model", AI_MAX_RETRIES=1)
+    @patch("apps.ai_engine.services.OpenAIProvider.generate")
+    def test_duplicate_ai_title_is_corrected_to_unique_title(self, generate):
+        other_task = ContentTask.objects.create(
+            project=self.project,
+            content_type=self.content_type,
+            title="Existing brief",
+            primary_keyword="existing keyword",
+            target_word_count=100,
+        )
+        GeneratedContent.objects.create(
+            task=other_task,
+            project=self.project,
+            content_type=self.content_type,
+            title="A Distinctive SEO Guide",
+            slug="a-distinctive-seo-guide",
+            body="Existing body",
+            provider="openai",
+            model_name="test-model",
+        )
+        self.task.title = ""
+        self.task.save(update_fields=["title"])
+        body = "SEO basics " + " ".join(f"word{i}" for i in range(90))
+        generate.side_effect = [
+            GenerationResult(
+                text='{"title":"A Distinctive SEO Guide","meta_description":"A guide","slug":"duplicate","body":"'
+                + body + '"}',
+                provider="openai",
+                model="test-model",
+            ),
+            GenerationResult(
+                text='{"title":"A Fresh Approach to SEO Basics","meta_description":"A guide","slug":"fresh-seo-basics","body":"'
+                + body + '"}',
+                provider="openai",
+                model="test-model",
+            ),
+        ]
+        content = execute_generation(self.task.pk, self.token)
+        self.assertEqual(content.title, "A Fresh Approach to SEO Basics")
+        self.assertEqual(generate.call_count, 2)
 
     @override_settings(
         OPENAI_API_KEY="test-key",

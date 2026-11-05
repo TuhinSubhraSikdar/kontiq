@@ -20,6 +20,9 @@ class ContentTaskForm(forms.ModelForm):
             "notes": forms.Textarea(attrs={"rows": 4}),
             "scheduled_for": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
         }
+        help_texts = {
+            "title": "Optional. Leave blank and the AI will generate a unique, relevant title.",
+        }
 
     def __init__(self, *args, owner, **kwargs):
         super().__init__(*args, **kwargs)
@@ -121,6 +124,10 @@ class CSVTaskUploadForm(forms.Form):
     def _normalise_header(value):
         return " ".join((value or "").strip().casefold().replace("_", " ").replace("-", " ").split())
 
+    @staticmethod
+    def _normalise_type(value):
+        return "".join(character for character in (value or "").casefold() if character.isalnum())
+
     def _column_map(self, fieldnames):
         normalised = {self._normalise_header(name): name for name in (fieldnames or [])}
         return {
@@ -162,8 +169,9 @@ class CSVTaskUploadForm(forms.Form):
         content_types = list(self.owner.kontiq_content_types.filter(is_active=True))
         type_lookup = {}
         for content_type in content_types:
-            type_lookup[content_type.name.strip().casefold()] = content_type
-            type_lookup[content_type.slug.strip().casefold()] = content_type
+            for value in (content_type.name, content_type.slug):
+                type_lookup[value.strip().casefold()] = content_type
+                type_lookup[self._normalise_type(value)] = content_type
         default_type = cleaned.get("default_content_type")
         url_validator = URLValidator(schemes=["http", "https"])
         errors = []
@@ -182,7 +190,7 @@ class CSVTaskUploadForm(forms.Form):
             if not any(values.values()):
                 continue
             keyword = values["keyword"]
-            title = values["title"] or keyword
+            title = values["title"]
             if not keyword:
                 errors.append(f"Row {row_number}: Keyword is required.")
                 continue
@@ -200,12 +208,16 @@ class CSVTaskUploadForm(forms.Form):
 
             content_type = default_type
             if values["content_type"]:
-                content_type = type_lookup.get(values["content_type"].casefold())
+                supplied_type = values["content_type"]
+                content_type = (
+                    type_lookup.get(supplied_type.casefold())
+                    or type_lookup.get(self._normalise_type(supplied_type))
+                )
                 if not content_type:
                     errors.append(
-                        f'Row {row_number}: Type "{values["content_type"]}" does not match an active content type.'
+                        f'Row {row_number}: Type "{supplied_type}" does not match an active content type.'
                     )
-            if not content_type:
+            elif not content_type:
                 errors.append(f"Row {row_number}: add a Type value or choose a default content type.")
 
             word_count = content_type.default_word_count if content_type else 1200

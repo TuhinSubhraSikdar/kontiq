@@ -1,5 +1,89 @@
-{% extends "base.html" %}{% block title %}Content Tasks · Kontiq{% endblock %}{% block content %}
-<div class="page-heading-actions">{% include "components/page_header.html" with eyebrow="Production queue" heading="Content Tasks" description="Create, schedule, filter, and send content work through the same durable generation flow." %}<div class="button-row"><a class="button button-secondary" href="{% url 'tasks:bulk_create' %}">Bulk create</a><a class="button button-primary" href="{% url 'tasks:create' %}">New task</a></div></div>
-<form class="filter-bar" method="get"><label><span>Search</span><input class="form-control" name="q" value="{{ query }}" placeholder="Title or keyword"></label><label><span>Project</span><select class="form-control" name="project"><option value="">All projects</option>{% for project in projects %}<option value="{{ project.pk }}"{% if selected_project == project.pk|stringformat:'s' %} selected{% endif %}>{{ project.name }}</option>{% endfor %}</select></label><label><span>Status</span><select class="form-control" name="status"><option value="">All statuses</option>{% for value,label in statuses %}<option value="{{ value }}"{% if selected_status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label><button class="button button-secondary">Filter</button></form>
-<section class="panel table-panel">{% if tasks %}<div class="table-scroll"><table class="data-table"><thead><tr><th>Task</th><th>Project</th><th>Type</th><th>Status</th><th>Schedule</th></tr></thead><tbody>{% for task in tasks %}<tr><td><a href="{% url 'tasks:detail' task.pk %}"><strong>{{ task.title }}</strong></a><span>{{ task.primary_keyword }}</span></td><td>{{ task.project.name }}</td><td>{{ task.content_type.name }}</td><td>{% include "components/status_badge.html" with label=task.get_status_display tone=task.status_tone %}</td><td>{{ task.scheduled_for|date:"M j, Y H:i"|default:"Manual" }}</td></tr>{% endfor %}</tbody></table></div>{% else %}{% include "components/empty_state.html" with icon="tasks" title="No matching tasks" description="Create a task or change the active filters." %}{% endif %}</section>
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Content Queue · Kontiq{% endblock %}
+{% block content %}
+<div class="page-heading-actions">
+    {% include "components/page_header.html" with eyebrow="AI content workspace" heading="Content Queue" description="Import a CSV or add rows manually. Review the keyword, landing page, and content type, then select the rows you want to proceed with." %}
+    <div class="button-row">
+        <a class="button button-secondary" href="{% url 'tasks:bulk_create' %}">Paste list</a>
+        <a class="button button-secondary" href="{% url 'tasks:csv_import' %}">Import CSV</a>
+        <a class="button button-secondary" href="{% static 'examples/content-tasks-example.csv' %}" download>Example CSV</a>
+        <a class="button button-primary" href="{% url 'tasks:create' %}">Add row</a>
+    </div>
+</div>
+
+<form class="filter-bar" method="get">
+    <label><span>Search</span><input class="form-control" name="q" value="{{ query }}" placeholder="Title or keyword"></label>
+    <label><span>Project</span><select class="form-control" name="project"><option value="">All projects</option>{% for project in projects %}<option value="{{ project.pk }}"{% if selected_project == project.pk|stringformat:'s' %} selected{% endif %}>{{ project.name }}</option>{% endfor %}</select></label>
+    <label><span>Status</span><select class="form-control" name="status"><option value="">All statuses</option>{% for value,label in statuses %}<option value="{{ value }}"{% if selected_status == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <button class="button button-secondary">Filter</button>
+</form>
+
+{% if tasks %}
+<div class="queue-toolbar">
+    <p><strong>Select rows</strong> only when their brief is ready. Proceed sends them to the configured AI worker.</p>
+    <form id="bulk-proceed-form" method="post" action="{% url 'tasks:proceed_selected' %}">
+        {% csrf_token %}
+        <button class="button button-primary" type="submit">Proceed with selected</button>
+    </form>
+</div>
+{% endif %}
+
+<section class="panel table-panel">
+    {% if tasks %}
+    <div class="table-scroll">
+        <table class="data-table queue-table">
+            <thead>
+                <tr>
+                    <th class="select-column"><label><span class="sr-only">Select all rows</span><input type="checkbox" data-select-all></label></th>
+                    <th>Keyword / topic</th>
+                    <th>Landing page</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Doc link</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                <tr>
+                    <td class="select-column"><input type="checkbox" name="task_ids" value="{{ task.pk }}" form="bulk-proceed-form" data-row-checkbox aria-label="Select {{ task.display_title }}"></td>
+                    <td class="queue-keyword-cell">
+                        <label class="sr-only" for="keyword-{{ task.pk }}">Keyword</label>
+                        <input id="keyword-{{ task.pk }}" class="queue-input" name="primary_keyword" value="{{ task.primary_keyword }}" form="task-row-{{ task.pk }}" maxlength="180" required{% if task.status == 'queued' or task.status == 'processing' %} disabled{% endif %}>
+                    </td>
+                    <td>
+                        <label class="sr-only" for="landing-{{ task.pk }}">Landing page</label>
+                        <input id="landing-{{ task.pk }}" class="queue-input queue-url-input" type="url" name="target_url" value="{{ task.target_url }}" placeholder="https://example.com/page" form="task-row-{{ task.pk }}"{% if task.status == 'queued' or task.status == 'processing' %} disabled{% endif %}>
+                    </td>
+                    <td>
+                        <label class="sr-only" for="type-{{ task.pk }}">Content type</label>
+                        <select id="type-{{ task.pk }}" class="queue-input" name="content_type" form="task-row-{{ task.pk }}" required{% if task.status == 'queued' or task.status == 'processing' %} disabled{% endif %}>
+                            {% for content_type in content_types %}<option value="{{ content_type.pk }}"{% if task.content_type_id == content_type.pk %} selected{% endif %}>{{ content_type.name }}</option>{% endfor %}
+                        </select>
+                    </td>
+                    <td>{% include "components/status_badge.html" with label=task.get_status_display tone=task.status_tone %}</td>
+                    <td>
+                        {% if task.generated_content %}
+                            <a class="document-link" href="{% url 'library:detail' task.generated_content.pk %}">Open document</a>
+                        {% else %}
+                            <span class="muted-text">Not generated</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form id="task-row-{{ task.pk }}" method="post" action="{% url 'tasks:quick_update' task.pk %}" class="row-actions">
+                            {% csrf_token %}
+                            <button class="text-button" type="submit"{% if task.status == 'queued' or task.status == 'processing' %} disabled title="This row is in progress"{% endif %}>Save</button>
+                            <a class="text-button" href="{% url 'tasks:detail' task.pk %}">Details</a>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        {% include "components/empty_state.html" with icon="tasks" title="No matching content rows" description="Import a CSV, add a row, or change the active filters." %}
+    {% endif %}
+</section>
 {% endblock %}

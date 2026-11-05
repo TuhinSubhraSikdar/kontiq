@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Import content CSV · Kontiq{% endblock %}
+{% block content %}
+{% include "components/page_header.html" with eyebrow="Bulk upload" heading="Import content CSV" description="Upload spreadsheet rows into the content queue. Importing does not start AI generation—you review the rows and explicitly select Proceed afterward." %}
+<div class="content-grid">
+    <form method="post" enctype="multipart/form-data" class="panel form-panel form-panel-wide" novalidate>
+        {% csrf_token %}
+        {% include "components/form_fields.html" %}
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">Import rows</button>
+            <a class="button button-secondary" href="{% url 'tasks:list' %}">Cancel</a>
+        </div>
+    </form>
+    <aside class="panel csv-guide">
+        <div class="panel-header"><h2>CSV format</h2></div>
+        <div class="panel-body">
+            <p>Use these headers. Only <strong>Keyword</strong> is required.</p>
+            <pre>Keyword,Landing Page,Type,Title,Word Count
+mortgage lawyer near me,https://example.com/,Blog Posting,,1200
+camping chair,https://example.com/chairs,Web 2.0,Camping Chair Guide,700</pre>
+            <p>Title is optional; leave it blank for AI to generate a unique title. Type values must match one of your active content types, or you can choose a default on this form.</p>
+        </div>
+    </aside>
+</div>
+{% endblock %}

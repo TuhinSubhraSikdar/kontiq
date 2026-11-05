@@ -7,8 +7,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from apps.activity_logs.services import record_activity
 from apps.ai_engine.services import queue_generation
 
-from .forms import BulkTaskForm, ContentTaskForm
+from .forms import BulkTaskForm, CSVTaskUploadForm, ContentTaskForm, TaskRowUpdateForm
 from .models import ContentTask
+from .services import create_tasks_from_csv, queue_selected_tasks, update_task_row
 
 
 def _task_for(user, pk):
@@ -17,7 +18,9 @@ def _task_for(user, pk):
 
 @login_required
 def task_list(request):
-    tasks = ContentTask.objects.filter(project__owner=request.user).select_related("project", "content_type")
+    tasks = ContentTask.objects.filter(project__owner=request.user).select_related(
+        "project", "content_type", "generated_content"
+    )
     status = request.GET.get("status", "")
     project = request.GET.get("project", "")
     query = request.GET.get("q", "").strip()
@@ -30,6 +33,7 @@ def task_list(request):
     return render(request, "tasks/list.html", {
         "tasks": tasks, "statuses": ContentTask.Status.choices,
         "projects": request.user.kontiq_projects.all(), "selected_status": status, "selected_project": project, "query": query,
+        "content_types": request.user.kontiq_content_types.filter(is_active=True),
     })
 
 
@@ -40,7 +44,13 @@ def task_create(request):
         task = form.save(commit=False)
         task.status = ContentTask.Status.SCHEDULED if task.scheduled_for else ContentTask.Status.DRAFT
         task.save()
-        record_activity(user=request.user, project=task.project, task=task, event_type="task.created", summary=f"Created task {task.title}")
+        record_activity(
+            user=request.user,
+            project=task.project,
+            task=task,
+            event_type="task.created",
+            summary=f"Created task {task.display_title}",
+        )
         messages.success(request, "Content task created.")
         return redirect("tasks:detail", pk=task.pk)
     return render(request, "tasks/form.html", {"form": form, "heading": "New content task"})
@@ -67,6 +77,60 @@ def task_bulk_create(request):
 
 
 @login_required
+def task_csv_import(request):
+    form = CSVTaskUploadForm(request.POST or None, request.FILES or None, owner=request.user)
+    if request.method == "POST" and form.is_valid():
+        created = create_tasks_from_csv(
+            owner=request.user,
+            project=form.cleaned_data["project"],
+            rows=form.parsed_rows,
+        )
+        messages.success(request, f"Imported {len(created)} content rows. Review them, then select Proceed.")
+        return redirect("tasks:list")
+    return render(request, "tasks/csv_import.html", {"form": form})
+
+
+@login_required
+def task_quick_update(request, pk):
+    task = _task_for(request.user, pk)
+    if request.method != "POST":
+        return redirect("tasks:list")
+    form = TaskRowUpdateForm(request.POST, instance=task, owner=request.user)
+    if not form.is_valid():
+        error = next(iter(form.errors.values()))[0]
+        messages.error(request, f"{task.display_title}: {error}")
+        return redirect("tasks:list")
+    try:
+        update_task_row(task=task, form=form)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, f'Updated "{task.display_title}".')
+    return redirect("tasks:list")
+
+
+@login_required
+def task_proceed_selected(request):
+    if request.method != "POST":
+        return redirect("tasks:list")
+    try:
+        result = queue_selected_tasks(owner=request.user, task_ids=request.POST.getlist("task_ids"))
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect("tasks:list")
+
+    if result.queued:
+        messages.success(request, f"Queued {result.queued} selected content row(s) for generation.")
+    if result.already_active:
+        messages.info(request, f"{result.already_active} selected row(s) were already in progress.")
+    if result.unavailable:
+        messages.warning(request, "Some selected rows were unavailable and were not queued.")
+    for error in result.errors:
+        messages.error(request, error)
+    return redirect("tasks:list")
+
+
+@login_required
 def task_detail(request, pk):
     return render(request, "tasks/detail.html", {"task": _task_for(request.user, pk)})
 
@@ -85,7 +149,7 @@ def task_edit(request, pk):
         task.save()
         messages.success(request, "Task updated.")
         return redirect("tasks:detail", pk=task.pk)
-    return render(request, "tasks/form.html", {"form": form, "heading": f"Edit {task.title}"})
+    return render(request, "tasks/form.html", {"form": form, "heading": f"Edit {task.display_title}"})
 
 
 @login_required
