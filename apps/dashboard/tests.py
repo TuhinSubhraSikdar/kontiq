@@ -33,12 +33,12 @@ class DashboardViewTests(TestCase):
         for label in (
             "Dashboard",
             "Projects",
-            "Content Tasks",
-            "Prompt Manager",
-            "AI Models",
-            "Scheduler",
+            "Content Types",
+            "Prompt Library",
+            "Content Queue",
+            "Automation",
             "Content Library",
-            "Activity Logs",
+            "Content History",
             "Settings",
         ):
             self.assertContains(response, label)

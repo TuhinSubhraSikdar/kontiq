@@ -12,6 +12,7 @@ from urllib.parse import urlsplit
 from django.apps import apps
 from django.conf import settings
 from django.db import DatabaseError, connection
+from django.utils import timezone
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,8 @@ class DashboardSnapshot:
     modules: tuple[ModuleStatus, ...]
     metrics: tuple[dict, ...] = ()
     recent_activity: tuple = ()
+    recent_content_types: tuple = ()
+    recent_prompts: tuple = ()
 
 
 MODULES = (
@@ -163,23 +166,29 @@ def get_dashboard_snapshot(user=None) -> DashboardSnapshot:
 
     metrics = ()
     recent_activity = ()
+    recent_content_types = ()
+    recent_prompts = ()
     if user and user.is_authenticated:
         from apps.activity_logs.models import ActivityLog
-        from apps.content_library.models import GeneratedContent
-        from apps.content_tasks.models import ContentTask
-        from apps.projects.models import Project
+        from apps.content_types.models import ContentType
+        from apps.prompts.models import PromptTemplate
 
-        task_queryset = ContentTask.objects.filter(project__owner=user)
+        content_types = ContentType.objects.filter(owner=user)
+        prompts = PromptTemplate.objects.filter(owner=user)
         metrics = (
-            {"label": "Projects", "value": Project.objects.filter(owner=user).count(), "detail": "Isolated workspaces"},
-            {"label": "Open tasks", "value": task_queryset.exclude(status=ContentTask.Status.COMPLETED).count(), "detail": "Draft through processing"},
-            {"label": "Completed", "value": GeneratedContent.objects.filter(project__owner=user).count(), "detail": "Library articles"},
-            {"label": "Failed", "value": task_queryset.filter(status=ContentTask.Status.FAILED).count(), "detail": "Needs attention"},
+            {"label": "Content types", "value": content_types.count(), "detail": "Active prompt workspaces", "icon": "layout"},
+            {"label": "Total prompts", "value": prompts.count(), "detail": "Defaults and overrides", "icon": "prompts"},
+            {"label": "Recently updated", "value": prompts.filter(updated_at__date=timezone.localdate()).count(), "detail": "Prompt edits today", "icon": "activity"},
+            {"label": "Favorites", "value": content_types.filter(is_favorite=True).count() + prompts.filter(is_favorite=True).count(), "detail": "Pinned for quick access", "icon": "star"},
         )
         recent_activity = tuple(ActivityLog.objects.filter(user=user).select_related("project")[:6])
+        recent_content_types = tuple(content_types.order_by("-updated_at")[:4])
+        recent_prompts = tuple(prompts.select_related("content_type", "project").order_by("-updated_at")[:5])
     return DashboardSnapshot(
         health_checks=(_database_health(), _storage_health(), _queue_health()),
         modules=MODULES,
         metrics=metrics,
         recent_activity=recent_activity,
+        recent_content_types=recent_content_types,
+        recent_prompts=recent_prompts,
     )

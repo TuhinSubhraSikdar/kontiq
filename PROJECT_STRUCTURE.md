@@ -64,6 +64,8 @@ Global AI configuration
  └── AIProviderSelection (singleton active configuration pointer)
 ```
 
+`ContentType` also owns presentation metadata (category, icon, color), optional planning-field names, and a favorite flag. `PromptTemplate` stores editor metadata, a favorite flag, and its current version number; `PromptVersion` keeps immutable pre-edit snapshots for explicit restore actions.
+
 `Project.owner` and `ContentType.owner` are required. Descendant access always scopes through those roots. IDs alone are never authorization.
 
 ### Projects and files
@@ -79,6 +81,8 @@ Content types are user-owned so one account cannot discover another account’s 
 Every new account receives six idempotent starter types with default prompts: Web 2.0, Blog Posting, PR Submission, Contextual, LLM Blog (Short Blog), and Others. A data migration adds any missing starters for existing accounts without overwriting matching user-owned records or later customizations.
 
 Prompt rendering recognizes a documented `{{ variable }}` syntax with a fixed allowlist. It does not evaluate Django, Jinja, Python, or arbitrary expressions. Unknown variables fail form validation.
+
+The Content Types screen is the primary prompt-management entry point. Each type opens a dedicated workspace for its default and project-scoped prompts. The Prompt Library provides cross-workspace search and filtering, while prompt edits preserve the previous template as a restorable version.
 
 ### Task state and idempotency
 
@@ -143,7 +147,7 @@ Activity records include a user, optional project/task, an event type, a short s
 
 All domain routes use Django authentication. Object fetches include owner filters. State-changing actions use POST and CSRF protection; deletion requires a dedicated confirmation page. The sidebar exposes only working routes.
 
-Templates extend the shared dark-navigation/light-workspace shell and use semantic tables, labels, focus styles, status badges, responsive layouts, and keyboard-usable controls. Bootstrap assets are local so the UI has no CDN dependency.
+Templates extend a shared responsive product shell with collapsible dark navigation, light and dark workspace themes, global prompt search, semantic tables, labels, focus styles, status badges, and keyboard-usable controls. Bootstrap assets are local so the UI has no CDN dependency. The prompt editor provides supported-variable insertion, live preview, local draft status, clipboard actions, and database-backed version restore.
 
 The content queue is the approval workspace. A UTF-8 CSV import accepts `Keyword` plus optional `Landing Page`, `Type`, `Title`, and `Word Count` columns, validates every row against the authenticated owner's active projects/content types, and creates draft tasks without invoking AI. Task titles are optional; a blank title is preserved as an explicit instruction for generation to create a distinct project-scoped title, while the keyword remains the temporary UI label. Users may edit the keyword, landing page, and type inline, then explicitly select up to 100 rows to proceed through the same durable queue reservation used by individual and scheduled generation. Completed rows link to their ownership-checked generated content page.
 

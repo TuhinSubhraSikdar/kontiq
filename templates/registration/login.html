@@ -1,10 +1,12 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Sign in · Kontiq{% endblock %}
 
 {% block auth_content %}
 <section class="auth-shell" aria-labelledby="login-title">
     <div class="auth-card">
+        <div class="auth-brand-art"><img src="{% static 'images/kontiq-ribbon-logo.png' %}" alt="Kontiq"></div>
         <p class="eyebrow">Welcome back</p>
         <h1 id="login-title">Sign in to Kontiq</h1>
         <p class="auth-intro">Access your local content automation workspace.</p>

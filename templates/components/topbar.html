@@ -1,15 +1,14 @@
 <header class="topbar">
     <div class="topbar-title-group">
-        <button class="icon-button sidebar-toggle d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebar" aria-controls="appSidebar" aria-label="Open navigation">
-            {% include "components/icon.html" with name="menu" %}
-        </button>
-        <div>
-            <p class="topbar-kicker">Kontiq workspace</p>
-            <p class="topbar-title">{{ page_title|default:"Workspace" }}</p>
-        </div>
+        <button class="icon-button sidebar-toggle d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebar" aria-controls="appSidebar" aria-label="Open navigation">{% include "components/icon.html" with name="menu" %}</button>
+        <button class="icon-button sidebar-collapse d-none d-lg-inline-grid" type="button" data-sidebar-collapse aria-label="Collapse sidebar" title="Collapse sidebar">{% include "components/icon.html" with name="panel-left" %}</button>
+        <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="{% url 'dashboard:index' %}">Workspace</a><span>/</span><strong>{{ page_title|default:"Overview" }}</strong></nav>
     </div>
-    <div class="workspace-state" title="Kontiq stores application files on this machine">
-        <span class="state-dot" aria-hidden="true"></span>
-        <span>Local mode</span>
+    <div class="topbar-actions">
+        <form class="global-search" method="get" action="{% url 'prompts:library' %}" role="search"><span>{% include "components/icon.html" with name="search" %}</span><label class="sr-only" for="global-search">Search prompts</label><input id="global-search" name="q" placeholder="Search prompts…" autocomplete="off"><kbd>/</kbd></form>
+        <div class="dropdown"><button class="button button-primary button-compact dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">{% include "components/icon.html" with name="plus" %}<span>Create</span></button><ul class="dropdown-menu dropdown-menu-end"><li><a class="dropdown-item" href="{% url 'prompts:content_type_create' %}">Content type</a></li><li><a class="dropdown-item" href="{% url 'prompts:create' %}">Prompt</a></li><li><a class="dropdown-item" href="{% url 'tasks:create' %}">Content task</a></li></ul></div>
+        <a class="icon-button" href="{% url 'activity_logs:list' %}" aria-label="Notifications and activity" title="Activity">{% include "components/icon.html" with name="bell" %}</a>
+        <button class="icon-button" type="button" data-theme-toggle aria-label="Switch color theme" title="Switch theme"><span class="theme-icon-light">{% include "components/icon.html" with name="moon" %}</span><span class="theme-icon-dark">{% include "components/icon.html" with name="sun" %}</span></button>
+        <div class="dropdown"><button class="avatar-button dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Open account menu">{{ user.get_username|first|upper }}</button><div class="dropdown-menu dropdown-menu-end account-menu"><div class="account-menu-head"><strong>{{ user.get_full_name|default:user.get_username }}</strong><span>{{ user.email|default:"Local Kontiq account" }}</span></div><a class="dropdown-item" href="{% url 'ai_engine:settings' %}">Workspace settings</a><a class="dropdown-item" href="https://github.com/tuhinsubhrasikdar" target="_blank" rel="noopener noreferrer">GitHub profile ↗</a><a class="dropdown-item" href="https://in.linkedin.com/in/tuhin-subhra-sikdar" target="_blank" rel="noopener noreferrer">LinkedIn profile ↗</a><div class="dropdown-divider"></div><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="dropdown-item" type="submit">Sign out</button></form></div></div>
     </div>
 </header>

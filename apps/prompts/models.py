@@ -10,6 +10,13 @@ Follow the supplied project context and return valid JSON with keys: title, meta
 
 
 class PromptTemplate(models.Model):
+    class Category(models.TextChoices):
+        WRITING = "writing", "Writing"
+        SEO = "seo", "SEO"
+        RESEARCH = "research", "Research"
+        REPURPOSING = "repurposing", "Repurposing"
+        CUSTOM = "custom", "Custom"
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="kontiq_prompts"
     )
@@ -19,7 +26,12 @@ class PromptTemplate(models.Model):
     project = models.ForeignKey(
         "projects.Project", on_delete=models.CASCADE, related_name="prompt_overrides", null=True, blank=True
     )
+    title = models.CharField(max_length=160, blank=True)
+    description = models.CharField(max_length=300, blank=True)
+    category = models.CharField(max_length=24, choices=Category.choices, default=Category.WRITING)
     template = models.TextField(default=DEFAULT_PROMPT)
+    is_favorite = models.BooleanField(default=False, db_index=True)
+    version = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -41,4 +53,31 @@ class PromptTemplate(models.Model):
 
     def __str__(self):
         scope = self.project.name if self.project else "Default"
-        return f"{self.content_type.name} — {scope}"
+        return self.title or f"{self.content_type.name} — {scope}"
+
+    @property
+    def display_title(self):
+        scope = self.project.name if self.project else "Default"
+        return self.title or f"{self.content_type.name} — {scope} prompt"
+
+
+class PromptVersion(models.Model):
+    prompt = models.ForeignKey(PromptTemplate, on_delete=models.CASCADE, related_name="versions")
+    version = models.PositiveIntegerField()
+    title = models.CharField(max_length=160, blank=True)
+    description = models.CharField(max_length=300, blank=True)
+    category = models.CharField(max_length=24, choices=PromptTemplate.Category.choices)
+    template = models.TextField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-version"]
+        constraints = [
+            models.UniqueConstraint(fields=["prompt", "version"], name="unique_prompt_version")
+        ]
+
+    def __str__(self):
+        return f"{self.prompt.display_title} v{self.version}"

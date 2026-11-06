@@ -17,8 +17,12 @@ VARIABLE_PATTERN = re.compile(r"{{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*}}")
 class PromptTemplateForm(forms.ModelForm):
     class Meta:
         model = PromptTemplate
-        fields = ["content_type", "project", "template", "is_active"]
-        widgets = {"template": forms.Textarea(attrs={"rows": 18, "class": "code-input"})}
+        fields = ["title", "description", "content_type", "project", "category", "template", "is_active"]
+        widgets = {
+            "title": forms.TextInput(attrs={"placeholder": "e.g. Authority article draft"}),
+            "description": forms.TextInput(attrs={"placeholder": "A short note about when to use this prompt"}),
+            "template": forms.Textarea(attrs={"rows": 22, "class": "code-input", "spellcheck": "true"}),
+        }
 
     def __init__(self, *args, owner, **kwargs):
         super().__init__(*args, **kwargs)

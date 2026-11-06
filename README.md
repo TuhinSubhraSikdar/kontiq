@@ -15,6 +15,7 @@ The roadmap MVP is implemented. Authenticated users can:
 - edit generated content while retaining immutable versions;
 - download escaped HTML and locally generated DOCX files through ownership-checked views;
 - review database-derived dashboard totals, queue state, provider readiness, and safe activity history.
+- use a responsive light/dark product shell with collapsible navigation, global prompt search, content-type workspaces, prompt favorites, live previews, clipboard actions, and restorable prompt versions.
 
 Structural output validation does not imply factual verification. Review generated content before publication.
 

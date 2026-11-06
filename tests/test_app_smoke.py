@@ -31,6 +31,8 @@ class AuthenticatedPageSmokeTests(TestCase):
             reverse("dashboard:index"), reverse("projects:list"), reverse("projects:create"),
             reverse("projects:detail", args=[self.project.pk]), reverse("projects:edit", args=[self.project.pk]),
             reverse("projects:delete", args=[self.project.pk]), reverse("prompts:list"),
+            reverse("prompts:library"),
+            reverse("prompts:content_type_workspace", args=[self.content_type.pk]),
             reverse("prompts:content_type_create"), reverse("prompts:content_type_edit", args=[self.content_type.pk]),
             reverse("prompts:content_type_delete", args=[self.content_type.pk]), reverse("prompts:create"),
             reverse("prompts:edit", args=[self.prompt.pk]), reverse("prompts:delete", args=[self.prompt.pk]),

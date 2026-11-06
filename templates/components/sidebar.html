@@ -1,69 +1,33 @@
+{% load static %}
 <aside class="offcanvas-lg offcanvas-start app-sidebar" tabindex="-1" id="appSidebar" aria-label="Primary navigation" data-bs-theme="dark">
     <div class="sidebar-header">
-        <a class="brand" href="{% url 'dashboard:index' %}" aria-label="Kontiq dashboard">
-            <span class="brand-mark" aria-hidden="true">K</span>
-            <span>Kontiq</span>
-        </a>
+        <a class="brand" href="{% url 'dashboard:index' %}" aria-label="Kontiq dashboard"><img class="brand-logo" src="{% static 'images/kontiq-app-icon.png' %}" alt=""><span class="brand-name">KONTIQ</span></a>
         <button type="button" class="btn-close btn-close-white d-lg-none" data-bs-dismiss="offcanvas" data-bs-target="#appSidebar" aria-label="Close navigation"></button>
     </div>
-
     <div class="sidebar-scroll">
+        <div class="workspace-switcher" aria-label="Current workspace"><span class="workspace-avatar">{{ user.get_username|first|upper }}</span><span class="workspace-switcher-copy"><strong>{{ user.get_short_name|default:user.get_username }}</strong><small>Personal workspace</small></span><span class="workspace-chevron" aria-hidden="true">⌄</span></div>
         <p class="nav-section-label">Workspace</p>
         <nav class="sidebar-nav" aria-label="Workspace">
-            <a class="nav-item{% if request.resolver_match.namespace == 'dashboard' %} active{% endif %}" href="{% url 'dashboard:index' %}"{% if request.resolver_match.namespace == 'dashboard' %} aria-current="page"{% endif %}>
-                <span class="nav-icon">{% include "components/icon.html" with name="dashboard" %}</span>
-                <span>Dashboard</span>
-            </a>
-            <a class="nav-item{% if request.resolver_match.namespace == 'projects' %} active{% endif %}" href="{% url 'projects:list' %}">
-                <span class="nav-icon">{% include "components/icon.html" with name="projects" %}</span>
-                <span>Projects</span>
-            </a>
-            <a class="nav-item{% if request.resolver_match.namespace == 'tasks' %} active{% endif %}" href="{% url 'tasks:list' %}">
-                <span class="nav-icon">{% include "components/icon.html" with name="tasks" %}</span>
-                <span>Content Tasks</span>
-            </a>
-            <a class="nav-item{% if request.resolver_match.namespace == 'prompts' %} active{% endif %}" href="{% url 'prompts:list' %}">
-                <span class="nav-icon">{% include "components/icon.html" with name="prompts" %}</span>
-                <span>Prompt Manager</span>
-            </a>
-            <a class="nav-item{% if request.resolver_match.namespace == 'ai_engine' %} active{% endif %}" href="{% url 'ai_engine:settings' %}">
-                <span class="nav-icon">{% include "components/icon.html" with name="ai" %}</span>
-                <span>AI Models</span>
-            </a>
-            <a class="nav-item{% if request.resolver_match.namespace == 'scheduler' %} active{% endif %}" href="{% url 'scheduler:index' %}">
-                <span class="nav-icon">{% include "components/icon.html" with name="scheduler" %}</span>
-                <span>Scheduler</span>
-            </a>
-            <a class="nav-item{% if request.resolver_match.namespace == 'library' %} active{% endif %}" href="{% url 'library:list' %}">
-                <span class="nav-icon">{% include "components/icon.html" with name="library" %}</span>
-                <span>Content Library</span>
-            </a>
+            <a class="nav-item{% if request.resolver_match.namespace == 'dashboard' %} active{% endif %}" href="{% url 'dashboard:index' %}"><span class="nav-icon">{% include "components/icon.html" with name="dashboard" %}</span><span class="nav-label">Dashboard</span></a>
+            <a class="nav-item{% if request.resolver_match.namespace == 'prompts' and request.resolver_match.url_name != 'library' %} active{% endif %}" href="{% url 'prompts:list' %}"><span class="nav-icon">{% include "components/icon.html" with name="layout" %}</span><span class="nav-label">Content Types</span></a>
+            <a class="nav-item{% if request.resolver_match.namespace == 'prompts' and request.resolver_match.url_name == 'library' and not request.GET.scope and not request.GET.favorites %} active{% endif %}" href="{% url 'prompts:library' %}"><span class="nav-icon">{% include "components/icon.html" with name="prompts" %}</span><span class="nav-label">Prompt Library</span></a>
+            <a class="nav-item{% if request.GET.scope == 'templates' %} active{% endif %}" href="{% url 'prompts:library' %}?scope=templates"><span class="nav-icon">{% include "components/icon.html" with name="template" %}</span><span class="nav-label">Prompt Templates</span></a>
+            <a class="nav-item{% if request.GET.favorites %} active{% endif %}" href="{% url 'prompts:library' %}?favorites=1"><span class="nav-icon">{% include "components/icon.html" with name="star" %}</span><span class="nav-label">Favorites</span></a>
         </nav>
-
+        <p class="nav-section-label nav-section-spaced">Create & publish</p>
+        <nav class="sidebar-nav" aria-label="Content production">
+            <a class="nav-item{% if request.resolver_match.namespace == 'projects' %} active{% endif %}" href="{% url 'projects:list' %}"><span class="nav-icon">{% include "components/icon.html" with name="projects" %}</span><span class="nav-label">Projects</span></a>
+            <a class="nav-item{% if request.resolver_match.namespace == 'tasks' %} active{% endif %}" href="{% url 'tasks:list' %}"><span class="nav-icon">{% include "components/icon.html" with name="tasks" %}</span><span class="nav-label">Content Queue</span></a>
+            <a class="nav-item{% if request.resolver_match.namespace == 'library' %} active{% endif %}" href="{% url 'library:list' %}"><span class="nav-icon">{% include "components/icon.html" with name="library" %}</span><span class="nav-label">Content Library</span></a>
+            <a class="nav-item{% if request.resolver_match.namespace == 'scheduler' %} active{% endif %}" href="{% url 'scheduler:index' %}"><span class="nav-icon">{% include "components/icon.html" with name="scheduler" %}</span><span class="nav-label">Automation</span></a>
+        </nav>
         <p class="nav-section-label nav-section-spaced">System</p>
         <nav class="sidebar-nav" aria-label="System">
-            <a class="nav-item{% if request.resolver_match.namespace == 'activity_logs' %} active{% endif %}" href="{% url 'activity_logs:list' %}">
-                <span class="nav-icon">{% include "components/icon.html" with name="activity" %}</span>
-                <span>Activity Logs</span>
-            </a>
-            <a class="nav-item{% if request.resolver_match.namespace == 'ai_engine' %} active{% endif %}" href="{% url 'ai_engine:settings' %}">
-                <span class="nav-icon">{% include "components/icon.html" with name="settings" %}</span>
-                <span>Settings</span>
-            </a>
+            <a class="nav-item{% if request.resolver_match.namespace == 'activity_logs' %} active{% endif %}" href="{% url 'activity_logs:list' %}"><span class="nav-icon">{% include "components/icon.html" with name="activity" %}</span><span class="nav-label">Content History</span></a>
+            <a class="nav-item{% if request.resolver_match.namespace == 'ai_engine' %} active{% endif %}" href="{% url 'ai_engine:settings' %}"><span class="nav-icon">{% include "components/icon.html" with name="settings" %}</span><span class="nav-label">Settings</span></a>
+            <a class="nav-item" href="https://github.com/tuhinsubhrasikdar" target="_blank" rel="noopener noreferrer"><span class="nav-icon">{% include "components/icon.html" with name="help" %}</span><span class="nav-label">Help & documentation</span><span class="external-mark" aria-hidden="true">↗</span></a>
         </nav>
     </div>
-
-    <div class="sidebar-account">
-        <div class="account-avatar" aria-hidden="true">{{ user.get_username|first|upper }}</div>
-        <div class="account-copy">
-            <strong>{{ user.get_full_name|default:user.get_username }}</strong>
-            <span>Local workspace</span>
-        </div>
-        <form method="post" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button class="icon-button icon-button-dark" type="submit" aria-label="Sign out" title="Sign out">
-                {% include "components/icon.html" with name="logout" %}
-            </button>
-        </form>
-    </div>
+    <div class="sidebar-account"><div class="account-avatar" aria-hidden="true">{{ user.get_username|first|upper }}</div><div class="account-copy sidebar-label"><strong>{{ user.get_full_name|default:user.get_username }}</strong><span>Local workspace</span></div><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="icon-button icon-button-dark" type="submit" aria-label="Sign out" title="Sign out">{% include "components/icon.html" with name="logout" %}</button></form></div>
+    <div class="sidebar-social sidebar-label"><a href="https://github.com/tuhinsubhrasikdar" target="_blank" rel="noopener noreferrer">GitHub</a><span>·</span><a href="https://in.linkedin.com/in/tuhin-subhra-sikdar" target="_blank" rel="noopener noreferrer">LinkedIn</a></div>
 </aside>
