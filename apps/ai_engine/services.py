@@ -3,11 +3,13 @@ import re
 import uuid
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Any, TypedDict
 
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from django.utils.text import slugify
+from langgraph.graph import END, START, StateGraph
 
 from apps.activity_logs.services import record_activity
 from apps.content_library.models import GeneratedContent, GeneratedContentVersion
@@ -34,6 +36,25 @@ class ParsedContent:
     meta_description: str
     slug: str
     body: str
+
+
+class GenerationWorkflowState(TypedDict, total=False):
+    """Ephemeral state for one worker execution.
+
+    Durable task state stays in Django. This graph only makes the bounded
+    generate → validate → correct loop explicit inside a single Celery run.
+    """
+
+    task: ContentTask
+    provider: Any
+    provider_configuration: Any
+    prompt: str
+    repair_note: str
+    attempts: int
+    result: Any
+    parsed: ParsedContent
+    errors: list[str]
+    word_count: int
 
 
 def provider_status():
@@ -145,6 +166,59 @@ def validate_content(content, task):
     if keyword and keyword not in f"{content.title}\n{content.body}".casefold():
         errors.append("primary keyword is missing")
     return errors, word_count
+
+
+def _repair_note(errors):
+    return "\n\nCorrect the following structural problems and return the complete JSON again: " + "; ".join(errors)
+
+
+def _generate_workflow_node(state: GenerationWorkflowState):
+    result = state["provider"].generate(
+        GenerationRequest(
+            system=SYSTEM_INSTRUCTIONS,
+            prompt=state["prompt"] + state.get("repair_note", ""),
+            model=state["provider_configuration"].model,
+            max_output_tokens=settings.AI_MAX_OUTPUT_TOKENS,
+        )
+    )
+    return {"result": result, "attempts": state.get("attempts", 0) + 1}
+
+
+def _validate_workflow_node(state: GenerationWorkflowState):
+    try:
+        parsed = parse_response(state["result"].text)
+    except ValueError as exc:
+        errors = [str(exc)]
+        return {"errors": errors, "repair_note": _repair_note(errors)}
+
+    errors, word_count = validate_content(parsed, state["task"])
+    updates: GenerationWorkflowState = {"parsed": parsed, "errors": errors, "word_count": word_count}
+    if errors:
+        updates["repair_note"] = _repair_note(errors)
+    return updates
+
+
+def _next_generation_step(state: GenerationWorkflowState):
+    if not state.get("errors"):
+        return "complete"
+    return "generate" if state["attempts"] <= settings.AI_MAX_RETRIES else "failed"
+
+
+def _build_generation_workflow():
+    workflow = StateGraph(GenerationWorkflowState)
+    workflow.add_node("generate", _generate_workflow_node)
+    workflow.add_node("validate", _validate_workflow_node)
+    workflow.add_edge(START, "generate")
+    workflow.add_edge("generate", "validate")
+    workflow.add_conditional_edges(
+        "validate",
+        _next_generation_step,
+        {"generate": "generate", "complete": END, "failed": END},
+    )
+    return workflow.compile()
+
+
+generation_workflow = _build_generation_workflow()
 
 
 def _unique_slug(project, desired, content_id=None):
@@ -285,28 +359,22 @@ def execute_generation(task_id, token):
 
     try:
         provider, provider_configuration = build_active_provider()
-        prompt = assemble_prompt(task)
-        repair_note = ""
-        errors = []
-        for attempt in range(settings.AI_MAX_RETRIES + 1):
-            result = provider.generate(
-                GenerationRequest(
-                    system=SYSTEM_INSTRUCTIONS,
-                    prompt=prompt + repair_note,
-                    model=provider_configuration.model,
-                    max_output_tokens=settings.AI_MAX_OUTPUT_TOKENS,
-                )
+        state = generation_workflow.invoke(
+            {
+                "task": task,
+                "provider": provider,
+                "provider_configuration": provider_configuration,
+                "prompt": assemble_prompt(task),
+                "repair_note": "",
+                "attempts": 0,
+            }
+        )
+        if state.get("errors"):
+            raise ValueError(
+                "Output validation failed after bounded correction attempts: "
+                + "; ".join(state["errors"])
             )
-            try:
-                parsed = parse_response(result.text)
-            except ValueError as exc:
-                errors = [str(exc)]
-            else:
-                errors, word_count = validate_content(parsed, task)
-            if not errors:
-                return _persist_result(task, parsed, result, word_count)
-            repair_note = "\n\nCorrect the following structural problems and return the complete JSON again: " + "; ".join(errors)
-        raise ValueError("Output validation failed after bounded correction attempts: " + "; ".join(errors))
+        return _persist_result(task, state["parsed"], state["result"], state["word_count"])
     except Exception as exc:
         mark_failed(task_id, token, exc)
         raise

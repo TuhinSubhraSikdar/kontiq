@@ -7,6 +7,9 @@ celery[redis]>=5.6.3,<5.7
 
 # AI and document tooling used by later roadmap phases.
 openai>=3.42,<4
+# Explicit, in-process workflow orchestration for generation/validation/correction.
+# Django remains the durable source of task state; LangGraph never persists secrets or prompts.
+langgraph>=1.0,<2
 cryptography>=46,<47
 python-docx>=1.2,<2
 pypdf>=6.21,<7

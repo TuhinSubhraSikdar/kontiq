@@ -25,7 +25,7 @@ Kontiq/
 │   ├── content_types/      User-owned content format definitions
 │   ├── prompts/            Restricted templates, overrides, rendering, preview
 │   ├── content_tasks/      Spreadsheet queue, CSV/bulk creation, briefs, filters, schedules, durable state
-│   ├── ai_engine/          Assembly, provider adapter, parsing, validation, orchestration
+│   ├── ai_engine/          Assembly, provider adapter, LangGraph validation/correction workflow, orchestration
 │   ├── scheduler/          Per-project policy, due dispatch, stale-lock recovery
 │   ├── content_library/    Generated content, versions, editing, HTML/DOCX exports
 │   └── activity_logs/      Safe append-oriented operational events
@@ -115,13 +115,15 @@ generation service
   2. select project override, default prompt, or safe fallback
   3. perform restricted variable substitution
   4. load the active encrypted provider configuration (or OpenAI environment fallback)
-  5. invoke the provider adapter request
-  6. parse required JSON fields
+  5. invoke the provider adapter request through the LangGraph generation node
+  6. parse required JSON fields in the validation node
   7. validate title/body/slug/meta length/word count/keyword
-  8. request bounded structural correction when needed
+  8. route through a bounded structural correction loop when needed
   9. atomically persist content/version and complete task
  10. append safe activity metadata
 ```
+
+LangGraph state is ephemeral to a single Celery execution and contains only the values needed by the graph nodes. It has no checkpointer and does not replace the relational task state, durable lock token, retry policy, or activity log. Prompts, raw responses, and credentials remain excluded from logs and persistence.
 
 The provider contract is represented by `GenerationRequest` and `GenerationResult`. `OpenAIProvider` translates it to the OpenAI Responses API. `OpenAICompatibleProvider` uses the compatible chat-completions surface exposed by Anthropic, Gemini, Groq, OpenRouter, and administrator-supplied compatible HTTPS endpoints. Both retain only the provider name, model, response identifier, and safe usage metadata. Assembled prompts and raw responses are not logged or persisted.
 

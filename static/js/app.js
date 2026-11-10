@@ -10,22 +10,34 @@ document.addEventListener("hidden.bs.offcanvas", (event) => {
 // Keep spreadsheet-style queue selection predictable, including filtered lists.
 const selectAll = document.querySelector("[data-select-all]");
 const rowCheckboxes = [...document.querySelectorAll("[data-row-checkbox]")];
+const proceedSelected = document.querySelector("[data-proceed-selected]");
+const selectionSummary = document.querySelector("#selection-summary");
 
 function syncSelectAll() {
-    if (!selectAll) return;
-    const selectedCount = rowCheckboxes.filter((checkbox) => checkbox.checked).length;
-    selectAll.checked = rowCheckboxes.length > 0 && selectedCount === rowCheckboxes.length;
-    selectAll.indeterminate = selectedCount > 0 && selectedCount < rowCheckboxes.length;
+    const selectableRows = rowCheckboxes.filter((checkbox) => !checkbox.disabled);
+    const selectedCount = selectableRows.filter((checkbox) => checkbox.checked).length;
+    if (selectAll) {
+        selectAll.checked = selectableRows.length > 0 && selectedCount === selectableRows.length;
+        selectAll.indeterminate = selectedCount > 0 && selectedCount < selectableRows.length;
+        selectAll.disabled = selectableRows.length === 0;
+    }
+    if (proceedSelected) proceedSelected.disabled = selectedCount === 0;
+    if (selectionSummary) {
+        selectionSummary.innerHTML = selectedCount
+            ? `<strong>${selectedCount} row${selectedCount === 1 ? "" : "s"} selected.</strong> Proceed sends them to the configured AI worker.`
+            : "<strong>Select rows</strong> only when their brief is ready. Proceed sends them to the configured AI worker.";
+    }
 }
 
 selectAll?.addEventListener("change", () => {
     rowCheckboxes.forEach((checkbox) => {
-        checkbox.checked = selectAll.checked;
+        if (!checkbox.disabled) checkbox.checked = selectAll.checked;
     });
     syncSelectAll();
 });
 
 rowCheckboxes.forEach((checkbox) => checkbox.addEventListener("change", syncSelectAll));
+syncSelectAll();
 
 // Persist the desktop navigation density without affecting the mobile drawer.
 const sidebarCollapse = document.querySelector("[data-sidebar-collapse]");

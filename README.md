@@ -25,6 +25,7 @@ Structural output validation does not imply factual verification. Review generat
 - Django 5.2 LTS
 - SQLite locally, with PostgreSQL-compatible ORM usage
 - Celery 5.6 and Redis
+- LangGraph 1.x for the bounded in-worker generation, validation, and correction workflow
 - OpenAI Python SDK for OpenAI and compatible provider endpoints
 - `cryptography` for authenticated encryption of database-stored API keys
 - `python-docx` and `pypdf`
@@ -117,7 +118,7 @@ Beat invokes the due-work dispatcher once per minute. The relational database re
 3. Edit the default prompt or add a project override using only the variables shown in Prompt Manager.
 4. Add a content row, paste a bulk list, or import a CSV with `Keyword`, `Landing Page`, and `Type` columns. The title is optional; when omitted, generation creates a distinct title from the keyword and project context. CSV rows remain pending review and do not generate automatically.
 5. Edit the keyword, landing page, or content type in the queue, select ready rows, and use **Proceed with selected**. Individual **Generate** actions and scheduled Beat dispatch use the same durable queue workflow.
-6. The worker loads the active provider configuration, assembles scoped context, invokes the selected model, parses JSON, validates structure/length/keyword presence, and performs bounded correction attempts.
+6. The worker loads the active provider configuration, assembles scoped context, and runs a bounded LangGraph workflow that invokes the selected model, parses JSON, validates structure/length/keyword presence, and performs correction attempts when necessary. Django remains the durable authority for task state and retries.
 7. Completed rows expose their document link in the content queue and appear in Content Library. Edits preserve the previous state as an immutable version.
 8. Export through the authorized HTML or DOCX download views.
 

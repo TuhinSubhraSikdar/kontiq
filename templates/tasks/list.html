@@ -21,10 +21,10 @@
 
 {% if tasks %}
 <div class="queue-toolbar">
-    <p><strong>Select rows</strong> only when their brief is ready. Proceed sends them to the configured AI worker.</p>
+    <p id="selection-summary" aria-live="polite"><strong>Select rows</strong> only when their brief is ready. Proceed sends them to the configured AI worker.</p>
     <form id="bulk-proceed-form" method="post" action="{% url 'tasks:proceed_selected' %}">
         {% csrf_token %}
-        <button class="button button-primary" type="submit">Proceed with selected</button>
+        <button class="button button-primary" type="submit" data-proceed-selected disabled>Proceed with selected</button>
     </form>
 </div>
 {% endif %}
@@ -47,7 +47,7 @@
             <tbody>
                 {% for task in tasks %}
                 <tr>
-                    <td class="select-column"><input type="checkbox" name="task_ids" value="{{ task.pk }}" form="bulk-proceed-form" data-row-checkbox aria-label="Select {{ task.display_title }}"></td>
+                    <td class="select-column"><input type="checkbox" name="task_ids" value="{{ task.pk }}" form="bulk-proceed-form" data-row-checkbox aria-label="Select {{ task.display_title }}"{% if task.status == 'queued' or task.status == 'processing' %} disabled title="This row is already in progress"{% endif %}></td>
                     <td class="queue-keyword-cell">
                         <label class="sr-only" for="keyword-{{ task.pk }}">Keyword</label>
                         <input id="keyword-{{ task.pk }}" class="queue-input" name="primary_keyword" value="{{ task.primary_keyword }}" form="task-row-{{ task.pk }}" maxlength="180" required{% if task.status == 'queued' or task.status == 'processing' %} disabled{% endif %}>
