@@ -5,6 +5,7 @@ from io import BytesIO
 from django.core.files.base import ContentFile
 from django.db import transaction
 from docx import Document
+from docx.shared import Inches
 
 from apps.activity_logs.services import record_activity
 
@@ -52,10 +53,12 @@ def render_docx(content):
         paragraph = document.add_paragraph()
         paragraph.add_run("Meta description: ").bold = True
         paragraph.add_run(content.meta_description)
-    for block in content.body.split("\n"):
-        line = block.strip()
-        if not line:
-            continue
+    if content.feature_image:
+        with content.feature_image.open("rb") as image_file:
+            document.add_picture(image_file, width=Inches(6.25))
+    blocks = [block.strip() for block in content.body.split("\n") if block.strip()]
+    body_image_index = len(blocks) // 2
+    for index, line in enumerate(blocks):
         if line.startswith("### "):
             document.add_heading(line[4:], level=3)
         elif line.startswith("## "):
@@ -64,6 +67,9 @@ def render_docx(content):
             document.add_heading(line[2:], level=1)
         else:
             document.add_paragraph(line)
+        if content.body_image and index == body_image_index:
+            with content.body_image.open("rb") as image_file:
+                document.add_picture(image_file, width=Inches(6.25))
     output = BytesIO()
     document.save(output)
     output.seek(0)

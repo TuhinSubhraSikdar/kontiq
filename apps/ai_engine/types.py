@@ -16,3 +16,17 @@ class GenerationResult:
     model: str
     response_id: str = ""
     usage: dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ImageGenerationRequest:
+    prompt: str
+    model: str
+    size: str = "1024x1024"
+
+
+@dataclass(frozen=True)
+class ImageGenerationResult:
+    image_bytes: bytes
+    media_type: str = "image/png"
+    response_id: str = ""

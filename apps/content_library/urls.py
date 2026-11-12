@@ -10,4 +10,5 @@ urlpatterns = [
     path("<int:pk>/versions/<int:version_pk>/restore/", views.version_restore, name="version_restore"),
     path("<int:pk>/download/html/", views.html_download, name="html_download"),
     path("<int:pk>/download/docx/", views.docx_download, name="docx_download"),
+    path("<int:pk>/images/<str:kind>/", views.content_image, name="content_image"),
 ]

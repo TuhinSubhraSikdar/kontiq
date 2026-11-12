@@ -12,6 +12,11 @@ def reference_upload_path(instance, filename):
     return f"project_references/{instance.project.slug}/{uuid.uuid4().hex}-{safe_name}"
 
 
+def brand_logo_upload_path(instance, filename):
+    safe_name = get_valid_filename(Path(filename).name)
+    return f"brand_logos/{instance.slug}/{uuid.uuid4().hex}-{safe_name}"
+
+
 class Project(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="kontiq_projects"
@@ -19,6 +24,8 @@ class Project(models.Model):
     name = models.CharField(max_length=160)
     slug = models.SlugField(max_length=180)
     website_url = models.URLField(blank=True)
+    brand_color = models.CharField(max_length=7, blank=True)
+    brand_logo = models.FileField(upload_to=brand_logo_upload_path, blank=True)
     description = models.TextField(blank=True)
     audience = models.TextField(blank=True)
     brand_voice = models.TextField(blank=True)

@@ -31,7 +31,7 @@ Kontiq/
 │   └── activity_logs/      Safe append-oriented operational events
 ├── templates/              Base shell, components, and namespaced domain templates
 ├── static/                 Design system, enhancement JS, favicon, vendored Bootstrap
-├── media/                  Runtime-only private references and documents
+├── media/                  Runtime-only private references, brand assets, images, and documents
 ├── tests/                  Cross-application render/integration tests
 ├── manage.py
 ├── requirements.txt
@@ -70,7 +70,7 @@ Global AI configuration
 
 ### Projects and files
 
-`Project` stores normalized business context without coupling it to provider code. `ProjectLink` categorizes approved URLs. `ProjectReference` records a safe relative path, original name, MIME label, size, SHA-256 checksum, extraction state, extracted text, and safe extraction error.
+`Project` stores normalized business context without coupling it to provider code. A project may also hold a validated brand theme color and a private PNG, JPEG, or WebP logo. Kontiq does not scrape website assets: the uploaded logo is the source of truth. `ProjectLink` categorizes approved URLs. `ProjectReference` records a safe relative path, original name, MIME label, size, SHA-256 checksum, extraction state, extracted text, and safe extraction error.
 
 Reference forms enforce size and `.txt`/`.pdf`/`.docx` extensions, verify PDF/DOCX signatures, normalize storage names, and reject per-project duplicates. Extraction uses UTF-8, `pypdf`, or `python-docx`. Downloads require authentication and ownership. Explicit deletion removes database records and stored files.
 
@@ -119,8 +119,9 @@ generation service
   6. parse required JSON fields in the validation node
   7. validate title/body/slug/meta length/word count/keyword
   8. route through a bounded structural correction loop when needed
-  9. atomically persist content/version and complete task
- 10. append safe activity metadata
+  9. when the project has a complete brand kit and OpenAI is active, generate a feature and supporting image, using the theme color in the prompt and compositing the exact uploaded logo locally
+  10. atomically persist content, image artifacts, version, and complete task
+  11. append safe activity metadata
 ```
 
 LangGraph state is ephemeral to a single Celery execution and contains only the values needed by the graph nodes. It has no checkpointer and does not replace the relational task state, durable lock token, retry policy, or activity log. Prompts, raw responses, and credentials remain excluded from logs and persistence.
@@ -139,7 +140,7 @@ Only one Beat scheduler should run for a deployment. SQLite users should keep wo
 
 `GeneratedContent` is one-to-one with its task and duplicates the project/content-type references deliberately for efficient ownership and library queries. Provider/model/response ID/usage metadata remain attached to the current result.
 
-The first generated result creates version 1. Before an edit or regeneration replacement, the service stores an immutable snapshot. Restore also snapshots the current state first. Edited body text is plain untrusted text; preview uses Django escaping. HTML export escapes every field and converts only recognized plain-text heading prefixes. DOCX rendering uses `python-docx` and stores the artifact under `media/generated_docs`.
+The first generated result creates version 1. Before an edit or regeneration replacement, the service stores an immutable snapshot. Restore also snapshots the current state first. Edited body text is plain untrusted text; preview uses Django escaping. HTML export escapes every field and converts only recognized plain-text heading prefixes. Projects with a complete brand kit generate two private JPEG assets under `media/generated_images`; the theme color informs the provider prompt and Pillow composites the exact uploaded logo after generation. DOCX rendering uses `python-docx`, embeds those image assets, and stores the artifact under `media/generated_docs`. Branded image generation currently uses the OpenAI image API; text-only provider configurations remain supported but cannot fulfill a complete-brand-kit generation.
 
 ## Activity and privacy
 

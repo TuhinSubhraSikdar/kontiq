@@ -1,8 +1,12 @@
 import tempfile
+from io import BytesIO
 
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from docx import Document
+from PIL import Image
 
 from apps.content_tasks.models import ContentTask
 from apps.content_types.models import ContentType
@@ -53,6 +57,18 @@ class ContentLibraryTests(TestCase):
         self.assertEqual(response["Content-Type"], "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         self.content.refresh_from_db()
         self.content.document.delete(save=False)
+
+    @override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+    def test_docx_embeds_generated_feature_and_body_images(self):
+        image = BytesIO()
+        Image.new("RGB", (40, 40), "#123456").save(image, format="JPEG")
+        self.content.feature_image.save("feature.jpg", ContentFile(image.getvalue()), save=True)
+        self.content.body_image.save("body.jpg", ContentFile(image.getvalue()), save=True)
+
+        response = self.client.get(reverse("library:docx_download", args=[self.content.pk]))
+
+        document = Document(BytesIO(b"".join(response.streaming_content)))
+        self.assertEqual(len(document.inline_shapes), 2)
 
     def test_other_user_cannot_download_content(self):
         self.client.force_login(get_user_model().objects.create_user(username="other-editor"))

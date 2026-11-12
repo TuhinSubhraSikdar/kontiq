@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import FileResponse, HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.activity_logs.services import record_activity
@@ -83,3 +83,12 @@ def docx_download(request, pk):
         filename=f"{content.slug}.docx",
         content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
+
+
+@login_required
+def content_image(request, pk, kind):
+    content = _content_for(request.user, pk)
+    image = {"feature": content.feature_image, "body": content.body_image}.get(kind)
+    if not image:
+        raise Http404("Image not found.")
+    return FileResponse(image.open("rb"), content_type="image/jpeg")

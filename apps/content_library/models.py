@@ -6,6 +6,10 @@ def generated_document_path(instance, filename):
     return f"generated_docs/{instance.project.slug}/{filename}"
 
 
+def generated_image_path(instance, filename):
+    return f"generated_images/{instance.project.slug}/{filename}"
+
+
 class GeneratedContent(models.Model):
     task = models.OneToOneField(
         "content_tasks.ContentTask", on_delete=models.CASCADE, related_name="generated_content"
@@ -23,6 +27,8 @@ class GeneratedContent(models.Model):
     model_name = models.CharField(max_length=120)
     provider_response_id = models.CharField(max_length=160, blank=True)
     usage = models.JSONField(default=dict, blank=True)
+    feature_image = models.FileField(upload_to=generated_image_path, blank=True)
+    body_image = models.FileField(upload_to=generated_image_path, blank=True)
     document = models.FileField(upload_to=generated_document_path, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -1,4 +1,5 @@
 import hashlib
+import re
 from pathlib import Path
 
 from django import forms
@@ -20,15 +21,42 @@ class ProjectForm(StyledModelForm):
         model = Project
         fields = [
             "name", "website_url", "description", "audience", "brand_voice",
-            "instructions", "avoid_topics", "is_active",
+            "brand_color", "brand_logo", "instructions", "avoid_topics", "is_active",
         ]
         widgets = {
+            "brand_color": forms.TextInput(attrs={"type": "color"}),
+            "brand_logo": forms.ClearableFileInput(attrs={"accept": ".png,.jpg,.jpeg,.webp"}),
             "description": forms.Textarea(attrs={"rows": 3}),
             "audience": forms.Textarea(attrs={"rows": 3}),
             "brand_voice": forms.Textarea(attrs={"rows": 3}),
             "instructions": forms.Textarea(attrs={"rows": 4}),
             "avoid_topics": forms.Textarea(attrs={"rows": 3}),
         }
+
+    def clean_brand_color(self):
+        color = self.cleaned_data["brand_color"].strip()
+        if color and not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+            raise ValidationError("Choose a valid six-digit theme color.")
+        return color.upper()
+
+    def clean_brand_logo(self):
+        upload = self.cleaned_data.get("brand_logo")
+        if not upload:
+            return upload
+        if upload.size > 5 * 1024 * 1024:
+            raise ValidationError("Logo files must be 5 MB or smaller.")
+        if Path(upload.name).suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+            raise ValidationError("Upload a PNG, JPEG, or WebP logo.")
+        try:
+            from PIL import Image
+
+            image = Image.open(upload)
+            image.verify()
+        except Exception as exc:
+            raise ValidationError("Upload a valid image file for the brand logo.") from exc
+        finally:
+            upload.seek(0)
+        return upload
 
 
 class ProjectLinkForm(StyledModelForm):

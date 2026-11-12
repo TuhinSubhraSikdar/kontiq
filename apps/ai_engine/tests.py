@@ -1,9 +1,12 @@
+import tempfile
 import uuid
+from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from cryptography.fernet import Fernet
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
 from django.urls import reverse
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -13,6 +16,7 @@ from apps.content_tasks.models import ContentTask
 from apps.content_types.models import ContentType
 from apps.projects.models import Project
 
+from .brand_images import BrandImageAssets
 from .forms import AIProviderConfigurationAdminForm
 from .models import AIProviderConfiguration, AIProviderSelection
 from .provider_configuration import get_runtime_provider_configuration
@@ -155,6 +159,34 @@ class GenerationServiceTests(TestCase):
         content = execute_generation(self.task.pk, self.token)
         self.assertEqual(content.slug, "seo-basics")
         self.assertEqual(generate.call_count, 2)
+
+    @override_settings(OPENAI_API_KEY="test-key", OPENAI_MODEL="test-model", AI_MAX_RETRIES=1)
+    @override_settings(MEDIA_ROOT=tempfile.mkdtemp(prefix="kontiq-image-tests-"))
+    @patch("apps.ai_engine.services.generate_brand_images")
+    @patch("apps.ai_engine.provider_configuration.OpenAIProvider.generate")
+    def test_generation_persists_feature_and_body_images(self, generate, generate_images):
+        from PIL import Image
+
+        logo = BytesIO()
+        Image.new("RGBA", (20, 20), "#123456").save(logo, format="PNG")
+        self.project.brand_color = "#123456"
+        self.project.brand_logo.save("logo.png", ContentFile(logo.getvalue()), save=True)
+        self.project.save()
+        image = BytesIO()
+        Image.new("RGB", (40, 40), "#abcdef").save(image, format="JPEG")
+        generate_images.return_value = BrandImageAssets(feature=image.getvalue(), body=image.getvalue())
+        body = "SEO basics " + " ".join(f"word{i}" for i in range(90))
+        generate.return_value = GenerationResult(
+            text='{"title":"SEO basics","meta_description":"A guide","slug":"seo-basics","body":"' + body + '"}',
+            provider="openai",
+            model="test-model",
+        )
+
+        content = execute_generation(self.task.pk, self.token)
+
+        self.assertTrue(content.feature_image.name)
+        self.assertTrue(content.body_image.name)
+        generate_images.assert_called_once()
 
     @override_settings(
         OPENAI_API_KEY="",

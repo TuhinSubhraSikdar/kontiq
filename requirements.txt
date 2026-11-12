@@ -12,6 +12,7 @@ openai>=3.42,<4
 langgraph>=1.0,<2
 cryptography>=46,<47
 python-docx>=1.2,<2
+Pillow>=11.0,<12
 pypdf>=6.21,<7
 
 # PostgreSQL compatibility for non-SQLite deployments.

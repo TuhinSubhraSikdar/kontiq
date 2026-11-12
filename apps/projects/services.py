@@ -55,7 +55,13 @@ def create_reference(*, project, upload, user):
 def delete_project_with_files(*, project):
     paths = [reference.file.name for reference in project.references.all() if reference.file]
     storage = ProjectReference._meta.get_field("file").storage
-    document_paths = [content.document.name for content in project.generated_contents.all() if content.document]
+    document_paths = [
+        path
+        for content in project.generated_contents.all()
+        for path in (content.document.name, content.feature_image.name, content.body_image.name)
+        if path
+    ]
+    logo_path = project.brand_logo.name if project.brand_logo else ""
     document_storage = project.generated_contents.model._meta.get_field("document").storage
     with transaction.atomic():
         project.delete()
@@ -63,6 +69,7 @@ def delete_project_with_files(*, project):
             lambda: (
                 [storage.delete(path) for path in paths],
                 [document_storage.delete(path) for path in document_paths],
+                document_storage.delete(logo_path) if logo_path else None,
             )
         )
 

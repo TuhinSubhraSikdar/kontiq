@@ -700,6 +700,7 @@ input[type="checkbox"].form-control { width: 1.1rem; min-height: 1.1rem; padding
 .inline-alert p { margin: 0.3rem 0 0; }
 
 .article-preview { padding: clamp(1.25rem, 3vw, 2.4rem); }
+.article-image { display: block; width: 100%; max-width: 50rem; height: auto; margin: 1.25rem 0; border-radius: .5rem; border: 1px solid var(--border-color); }
 .article-meta { display: flex; flex-wrap: wrap; gap: 0.55rem 1rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; color: var(--slate-500); font-size: 0.68rem; }
 .article-body { max-width: 48rem; margin: 1.5rem auto; color: var(--slate-800); font-size: 0.92rem; line-height: 1.75; }
 .article-body h1, .article-body h2, .article-body h3 { color: var(--slate-950); line-height: 1.3; }

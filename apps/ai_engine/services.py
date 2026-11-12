@@ -6,6 +6,7 @@ from datetime import timedelta
 from typing import Any, TypedDict
 
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 from django.utils.text import slugify
@@ -18,6 +19,7 @@ from apps.prompts.models import DEFAULT_PROMPT, PromptTemplate
 from apps.prompts.services import render_prompt
 
 from .provider_configuration import build_active_provider, safe_provider_status
+from .brand_images import generate_brand_images
 from .types import GenerationRequest
 
 
@@ -244,7 +246,7 @@ def _unique_title(project, desired, content_id=None):
     return candidate
 
 
-def _persist_result(task, content, result, word_count):
+def _persist_result(task, content, result, word_count, image_assets=None):
     with transaction.atomic():
         task = ContentTask.objects.select_for_update().select_related("project", "content_type").get(pk=task.pk)
         existing = GeneratedContent.objects.filter(task=task).first()
@@ -272,6 +274,8 @@ def _persist_result(task, content, result, word_count):
             existing.model_name = result.model
             existing.provider_response_id = result.response_id
             existing.usage = result.usage
+            old_document = existing.document.name
+            existing.document = ""
             existing.save()
             generated = existing
         else:
@@ -297,6 +301,28 @@ def _persist_result(task, content, result, word_count):
                 body=generated.body,
                 change_note="Initial generation",
             )
+        if image_assets:
+            old_feature = generated.feature_image.name
+            old_body = generated.body_image.name
+            generated.feature_image.save(
+                f"{generated.task_id}-{generated.slug}-feature.jpg",
+                ContentFile(image_assets.feature),
+                save=False,
+            )
+            generated.body_image.save(
+                f"{generated.task_id}-{generated.slug}-body.jpg",
+                ContentFile(image_assets.body),
+                save=False,
+            )
+            generated.save(update_fields=["feature_image", "body_image", "updated_at"])
+            transaction.on_commit(
+                lambda: (
+                    generated.feature_image.storage.delete(old_feature) if old_feature else None,
+                    generated.body_image.storage.delete(old_body) if old_body else None,
+                )
+            )
+        if existing and old_document:
+            transaction.on_commit(lambda: generated.document.storage.delete(old_document))
         task.status = ContentTask.Status.COMPLETED
         task.scheduled_for = None
         task.last_error = ""
@@ -374,7 +400,16 @@ def execute_generation(task_id, token):
                 "Output validation failed after bounded correction attempts: "
                 + "; ".join(state["errors"])
             )
-        return _persist_result(task, state["parsed"], state["result"], state["word_count"])
+        parsed = state["parsed"]
+        image_preview = GeneratedContent(
+            task=task,
+            project=task.project,
+            content_type=task.content_type,
+            title=parsed.title,
+            slug=parsed.slug,
+        )
+        image_assets = generate_brand_images(image_preview)
+        return _persist_result(task, parsed, state["result"], state["word_count"], image_assets)
     except Exception as exc:
         mark_failed(task_id, token, exc)
         raise

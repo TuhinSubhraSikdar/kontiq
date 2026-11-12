@@ -1,7 +1,14 @@
 from django.conf import settings
 from openai import OpenAI
 
-from apps.ai_engine.types import GenerationRequest, GenerationResult
+import base64
+
+from apps.ai_engine.types import (
+    GenerationRequest,
+    GenerationResult,
+    ImageGenerationRequest,
+    ImageGenerationResult,
+)
 
 
 class OpenAIProvider:
@@ -43,4 +50,28 @@ class OpenAIProvider:
             model=request.model,
             response_id=getattr(response, "id", "") or "",
             usage=usage,
+        )
+
+    def generate_image(self, request: ImageGenerationRequest) -> ImageGenerationResult:
+        if not self.api_key:
+            raise RuntimeError("OpenAI is not configured with an API key.")
+        client_options = dict(
+            api_key=self.api_key,
+            timeout=float(settings.AI_TIMEOUT_SECONDS),
+            max_retries=0,
+        )
+        if self.base_url:
+            client_options["base_url"] = self.base_url
+        response = OpenAI(**client_options).images.generate(
+            model=request.model,
+            prompt=request.prompt,
+            size=request.size,
+        )
+        image_data = response.data[0] if getattr(response, "data", None) else None
+        encoded = getattr(image_data, "b64_json", None)
+        if not encoded:
+            raise RuntimeError("OpenAI returned no image data.")
+        return ImageGenerationResult(
+            image_bytes=base64.b64decode(encoded),
+            response_id=getattr(response, "id", "") or "",
         )

@@ -21,7 +21,7 @@ def project_list(request):
 
 @login_required
 def project_create(request):
-    form = ProjectForm(request.POST or None)
+    form = ProjectForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
         project = form.save(commit=False)
         project.owner = request.user
@@ -45,7 +45,7 @@ def project_detail(request, pk):
 @login_required
 def project_edit(request, pk):
     project = _project_for(request.user, pk)
-    form = ProjectForm(request.POST or None, instance=project)
+    form = ProjectForm(request.POST or None, request.FILES or None, instance=project)
     if request.method == "POST" and form.is_valid():
         form.save()
         record_activity(user=request.user, project=project, event_type="project.updated", summary=f"Updated project {project.name}")

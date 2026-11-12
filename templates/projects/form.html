@@ -2,5 +2,5 @@
 {% block title %}{{ heading }} · Kontiq{% endblock %}
 {% block content %}
 {% include "components/page_header.html" with eyebrow="Project setup" heading=heading description="Provide durable business context. You can refine it at any time." %}
-<form method="post" class="panel form-panel" novalidate>{% csrf_token %}{% include "components/form_fields.html" %}<div class="form-actions"><button class="button button-primary" type="submit">Save project</button><a class="button button-secondary" href="{% if project %}{% url 'projects:detail' project.pk %}{% else %}{% url 'projects:list' %}{% endif %}">Cancel</a></div></form>
+<form method="post" enctype="multipart/form-data" class="panel form-panel" novalidate>{% csrf_token %}{% include "components/form_fields.html" %}<p class="help-text">Add a theme color and logo to create branded feature and in-article images. Kontiq uses the uploaded logo; it does not scrape website assets.</p><div class="form-actions"><button class="button button-primary" type="submit">Save project</button><a class="button button-secondary" href="{% if project %}{% url 'projects:detail' project.pk %}{% else %}{% url 'projects:list' %}{% endif %}">Cancel</a></div></form>
 {% endblock %}

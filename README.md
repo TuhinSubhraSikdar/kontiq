@@ -13,7 +13,7 @@ The roadmap MVP is implemented. Authenticated users can:
 - prevent duplicate execution with durable database tokens and explicit state transitions;
 - dispatch due work through Celery Beat and recover stale locks;
 - edit generated content while retaining immutable versions;
-- download escaped HTML and locally generated DOCX files through ownership-checked views;
+- generate a branded feature image and supporting body image when a project has a theme color and logo, then download them in locally generated DOCX files through ownership-checked views;
 - review database-derived dashboard totals, queue state, provider readiness, and safe activity history.
 - use a responsive light/dark product shell with collapsible navigation, global prompt search, content-type workspaces, prompt favorites, live previews, clipboard actions, and restorable prompt versions.
 
@@ -66,6 +66,8 @@ The web UI works without Redis. AI generation and scheduled dispatch require Red
 | `CELERY_TASK_ALWAYS_EAGER` | Inline execution for isolated testing only | `False` |
 | `OPENAI_API_KEY` | Server-side OpenAI credential | Empty |
 | `OPENAI_MODEL` | OpenAI Responses API model | Empty |
+| `OPENAI_IMAGE_MODEL` | OpenAI image model for branded assets | `gpt-image-1` |
+| `AI_IMAGE_SIZE` | Square image size sent to the image provider | `1024x1024` |
 | `AI_CREDENTIAL_ENCRYPTION_KEY` | Fernet master key for admin-managed provider credentials | Empty |
 | `AI_MAX_RETRIES` | Bounded structural correction attempts | `2` |
 | `AI_TASK_MAX_ATTEMPTS` | Maximum durable worker attempts | `3` |
@@ -119,8 +121,9 @@ Beat invokes the due-work dispatcher once per minute. The relational database re
 4. Add a content row, paste a bulk list, or import a CSV with `Keyword`, `Landing Page`, and `Type` columns. The title is optional; when omitted, generation creates a distinct title from the keyword and project context. CSV rows remain pending review and do not generate automatically.
 5. Edit the keyword, landing page, or content type in the queue, select ready rows, and use **Proceed with selected**. Individual **Generate** actions and scheduled Beat dispatch use the same durable queue workflow.
 6. The worker loads the active provider configuration, assembles scoped context, and runs a bounded LangGraph workflow that invokes the selected model, parses JSON, validates structure/length/keyword presence, and performs correction attempts when necessary. Django remains the durable authority for task state and retries.
-7. Completed rows expose their document link in the content queue and appear in Content Library. Edits preserve the previous state as an immutable version.
-8. Export through the authorized HTML or DOCX download views.
+7. To create branded images, set the project's theme color and upload its PNG, JPEG, or WebP logo. With an active OpenAI provider, Kontiq generates a feature image and supporting body image, then composites the exact uploaded logo onto both locally.
+8. Completed rows expose their document link in the content queue and appear in Content Library. Edits preserve the previous state as an immutable version.
+9. Export through the authorized HTML or DOCX download views. DOCX exports embed the generated images.
 
 Reference text and model output are treated as untrusted. Prompt rendering performs restricted scalar substitution, HTML export escapes content, uploads validate extension/size/signature, and private files never rely on an obscure media URL as authorization.
 
@@ -139,6 +142,9 @@ The suite covers authentication, tenant isolation, upload validation, prompt-var
 ```text
 media/
 ├── project_references/<project-slug>/<uuid>-<safe-name>.<ext>
+├── brand_logos/<project-slug>/<uuid>-<safe-name>.<ext>
+├── generated_images/<project-slug>/<task-id>-<slug>-feature.jpg
+├── generated_images/<project-slug>/<task-id>-<slug>-body.jpg
 └── generated_docs/<project-slug>/<task-id>-<slug>-v<version>.docx
 ```
 

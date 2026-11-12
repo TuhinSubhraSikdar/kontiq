@@ -172,15 +172,23 @@ def task_delete(request, pk):
         messages.error(request, "A queued or processing task cannot be deleted.")
         return redirect("tasks:detail", pk=task.pk)
     if request.method == "POST":
-        document = ""
+        artifacts = []
         storage = None
-        if hasattr(task, "generated_content") and task.generated_content.document:
-            document = task.generated_content.document.name
+        if hasattr(task, "generated_content"):
+            artifacts = [
+                path
+                for path in (
+                    task.generated_content.document.name,
+                    task.generated_content.feature_image.name,
+                    task.generated_content.body_image.name,
+                )
+                if path
+            ]
             storage = task.generated_content.document.storage
         with transaction.atomic():
             task.delete()
-            if document:
-                transaction.on_commit(lambda: storage.delete(document))
-        messages.success(request, "Task, generated content, versions, and stored document were deleted.")
+            if artifacts:
+                transaction.on_commit(lambda: [storage.delete(path) for path in artifacts])
+        messages.success(request, "Task, generated content, versions, and stored artifacts were deleted.")
         return redirect("tasks:list")
     return render(request, "tasks/confirm_delete.html", {"task": task})
